@@ -1,0 +1,59 @@
+# Gitpod configuration for NextERP
+image:
+  file: .gitpod.Dockerfile
+
+# Port forwarding
+ports:
+  - port: 8080
+    name: Backend
+    onOpen: notify
+  - port: 3000
+    name: Frontend
+    onOpen: notify
+  - port: 5432
+    name: PostgreSQL
+    onOpen: ignore
+  - port: 6379
+    name: Redis
+    onOpen: ignore
+  - port: 15672
+    name: RabbitMQ Management
+    onOpen: ignore
+
+# Tasks to run on workspace startup
+tasks:
+  - name: Start Database Services
+    command: |
+      cd deploy/docker
+      docker-compose up -d postgres redis rabbitmq
+
+  - name: Backend - Build and Run
+    before: |
+      cd backend
+      ./mvnw dependency:go-offline
+    command: |
+      cd backend
+      ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+    openMode: split-right
+
+  - name: Frontend - Install and Run
+    before: |
+      cd frontend
+      pnpm install
+    command: |
+      cd frontend
+      pnpm dev
+    openMode: split-left
+
+# VS Code extensions
+vscode:
+  extensions:
+    - vscjava.vscode-java-pack
+    - ms-python.python
+    - dbaeumer.vscode-eslint
+    - esbenp.prettier-vscode
+    - golang.go
+    - ms-azuretools.vscode-docker
+    - redhat.ansible
+    - hashicorp.terraform
+    - Firstred.vscode-terraform
