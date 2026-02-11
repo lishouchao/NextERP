@@ -1,7 +1,0 @@
-databaseChangeLog:
-  - changeSet:
-      id: 1
-      author: nexterp
-      changes:
-        - includeAll:
-            path: classpath:db/migration
