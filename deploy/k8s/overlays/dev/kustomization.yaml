@@ -1,0 +1,17 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: nexterp
+
+resources:
+  - ../../base
+  - deployment/backend-deployment.yaml
+  - deployment/frontend-deployment.yaml
+  - service/backend-service.yaml
+  - service/frontend-service.yaml
+
+images:
+  - name: nexterp/backend
+    newTag: dev
+  - name: nexterp/frontend
+    newTag: dev

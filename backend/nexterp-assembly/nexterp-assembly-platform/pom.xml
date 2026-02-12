@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.nexterp</groupId>
+        <artifactId>nexterp-assembly</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>nexterp-assembly-platform</artifactId>
+    <packaging>pom</packaging>
+
+    <name>NextERP Assembly Platform</name>
+    <description>NextERP 平台独立部署包</description>
+
+    <dependencies>
+        <!-- Platform Modules -->
+        <dependency>
+            <groupId>com.nexterp</groupId>
+            <artifactId>nexterp-platform-auth</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.nexterp</groupId>
+            <artifactId>nexterp-platform-tenant</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.nexterp</groupId>
+            <artifactId>nexterp-platform-workflow</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.nexterp</groupId>
+            <artifactId>nexterp-platform-report</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.nexterp</groupId>
+            <artifactId>nexterp-platform-notification</artifactId>
+        </dependency>
+
+        <!-- Shared Modules -->
+        <dependency>
+            <groupId>com.nexterp</groupId>
+            <artifactId>nexterp-shared-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.nexterp</groupId>
+            <artifactId>nexterp-shared-data</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.nexterp</groupId>
+            <artifactId>nexterp-shared-security</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <layers>
+                        <enabled>true</enabled>
+                    </layers>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <configuration>
+                    <descriptors>
+                        <descriptor>src/main/assembly/assembly.xml</descriptor>
+                    </descriptors>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

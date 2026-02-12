@@ -1,0 +1,129 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: nexterp-postgres
+    environment:
+      POSTGRES_USER: nexterp
+      POSTGRES_PASSWORD: nexterp
+      POSTGRES_DB: nexterp
+      TZ: Asia/Shanghai
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexterp"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - nexterp-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: nexterp-redis
+    command: redis-server --appendonly yes --requirepass nexterp
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - nexterp-network
+
+  # RabbitMQ Message Queue
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: nexterp-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: nexterp
+      RABBITMQ_DEFAULT_PASS: nexterp
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - nexterp-network
+
+  # NextERP Backend
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/docker/backend/Dockerfile
+    container_name: nexterp-backend
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/nexterp
+      SPRING_DATASOURCE_USERNAME: nexterp
+      SPRING_DATASOURCE_PASSWORD: nexterp
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+      SPRING_REDIS_PASSWORD: nexterp
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: nexterp
+      SPRING_RABBITMQ_PASSWORD: nexterp
+      JAVA_OPTS: "-Xmx1g -Xms512m"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - nexterp-network
+
+  # NextERP Frontend (Web)
+  frontend:
+    build:
+      context: ..
+      dockerfile: deploy/docker/frontend/Dockerfile
+    container_name: nexterp-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - nexterp-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+
+networks:
+  nexterp-network:
+    driver: bridge
