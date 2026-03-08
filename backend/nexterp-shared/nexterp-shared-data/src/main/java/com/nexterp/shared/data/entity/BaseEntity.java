@@ -50,4 +50,18 @@ public abstract class BaseEntity {
     @LastModifiedBy
     @Column(name = "updated_by", length = 50)
     private String updatedBy;
+
+    /**
+     * 持久化前的回调方法
+     * 确保 createdAt 和 createdBy 在保存前被设置
+     */
+    @jakarta.persistence.PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (createdBy == null) {
+            createdBy = "system";
+        }
+    }
 }

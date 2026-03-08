@@ -8,11 +8,13 @@ import com.nexterp.shared.security.properties.JwtProperties;
 import com.nexterp.shared.security.userdetails.UserInfo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 刷新令牌服务
@@ -26,9 +28,9 @@ public class RefreshTokenService {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtProperties jwtProperties;
-    private final RedisTemplate<String, Object> redisTemplate;
 
-    private static final String REFRESH_TOKEN_PREFIX = "refresh_token:";
+    // 内存存储刷新令牌（生产环境应使用Redis）
+    private static final Map<String, TokenInfo> REFRESH_TOKENS = new ConcurrentHashMap<>();
     private static final long REFRESH_TOKEN_EXPIRE_DAYS = 7;
 
     /**
@@ -39,15 +41,10 @@ public class RefreshTokenService {
      */
     public String createRefreshToken(String username) {
         String refreshToken = UUID.randomUUID().toString();
-        String key = REFRESH_TOKEN_PREFIX + refreshToken;
+        LocalDateTime expiryTime = LocalDateTime.now().plusDays(REFRESH_TOKEN_EXPIRE_DAYS);
 
-        // 存储刷新令牌与用户名的映射
-        redisTemplate.opsForValue().set(
-                key,
-                username,
-                REFRESH_TOKEN_EXPIRE_DAYS,
-                TimeUnit.DAYS
-        );
+        TokenInfo tokenInfo = new TokenInfo(username, expiryTime);
+        REFRESH_TOKENS.put(refreshToken, tokenInfo);
 
         log.debug("创建刷新令牌: username={}", username);
         return refreshToken;
@@ -61,13 +58,14 @@ public class RefreshTokenService {
      */
     public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
         String refreshToken = request.getRefreshToken();
-        String key = REFRESH_TOKEN_PREFIX + refreshToken;
 
-        // 从Redis获取用户名
-        String username = (String) redisTemplate.opsForValue().get(key);
-        if (username == null) {
+        // 从内存获取用户名
+        TokenInfo tokenInfo = REFRESH_TOKENS.get(refreshToken);
+        if (tokenInfo == null || tokenInfo.isExpired()) {
             throw new BusinessException("刷新令牌无效或已过期");
         }
+
+        String username = tokenInfo.getUsername();
 
         // 构建UserInfo对象
         UserInfo userInfo = UserInfo.builder()
@@ -82,7 +80,7 @@ public class RefreshTokenService {
         String newRefreshToken = createRefreshToken(username);
 
         // 删除旧的刷新令牌
-        redisTemplate.delete(key);
+        REFRESH_TOKENS.remove(refreshToken);
 
         log.info("刷新令牌成功: username={}", username);
 
@@ -101,8 +99,8 @@ public class RefreshTokenService {
      * @return 是否有效
      */
     public boolean validateRefreshToken(String refreshToken) {
-        String key = REFRESH_TOKEN_PREFIX + refreshToken;
-        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+        TokenInfo tokenInfo = REFRESH_TOKENS.get(refreshToken);
+        return tokenInfo != null && !tokenInfo.isExpired();
     }
 
     /**
@@ -111,8 +109,42 @@ public class RefreshTokenService {
      * @param refreshToken 刷新令牌
      */
     public void revokeRefreshToken(String refreshToken) {
-        String key = REFRESH_TOKEN_PREFIX + refreshToken;
-        redisTemplate.delete(key);
+        REFRESH_TOKENS.remove(refreshToken);
         log.debug("撤销刷新令牌");
+    }
+
+    /**
+     * 定时清理过期令牌
+     */
+    @Scheduled(fixedRate = 3600000) // 每小时执行一次
+    public void cleanExpiredTokens() {
+        REFRESH_TOKENS.entrySet().removeIf(entry -> {
+            boolean expired = entry.getValue().isExpired();
+            if (expired) {
+                log.debug("清理过期刷新令牌");
+            }
+            return expired;
+        });
+    }
+
+    /**
+     * 令牌信息
+     */
+    private static class TokenInfo {
+        private final String username;
+        private final LocalDateTime expiryTime;
+
+        public TokenInfo(String username, LocalDateTime expiryTime) {
+            this.username = username;
+            this.expiryTime = expiryTime;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public boolean isExpired() {
+            return LocalDateTime.now().isAfter(expiryTime);
+        }
     }
 }

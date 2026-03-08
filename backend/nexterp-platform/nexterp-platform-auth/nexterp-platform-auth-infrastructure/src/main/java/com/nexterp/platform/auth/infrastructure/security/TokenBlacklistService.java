@@ -1,13 +1,12 @@
 package com.nexterp.platform.auth.infrastructure.security;
-import java.util.Collection;
-import java.util.List;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
-import java.util.concurrent.TimeUnit;
+import java.time.LocalDateTime;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Token黑名单服务
@@ -19,11 +18,9 @@ import java.util.concurrent.TimeUnit;
 public class TokenBlacklistService {
 
     private static final String BLACKLIST_KEY_PREFIX = "token:blacklist:";
-    private final RedisTemplate<String, Object> redisTemplate;
 
-    public TokenBlacklistService(RedisTemplate<String, Object> redisTemplate) {
-        this.redisTemplate = redisTemplate;
-    }
+    // 内存存储黑名单（生产环境应使用Redis）
+    private static final Set<BlacklistedToken> BLACKLIST = ConcurrentHashMap.newKeySet();
 
     /**
      * 将Token加入黑名单
@@ -32,8 +29,8 @@ public class TokenBlacklistService {
      * @param expireSeconds 过期时间(秒)
      */
     public void addToBlacklist(String token, long expireSeconds) {
-        String key = BLACKLIST_KEY_PREFIX + token;
-        redisTemplate.opsForValue().set(key, "blacklisted", expireSeconds, TimeUnit.SECONDS);
+        LocalDateTime expiryTime = LocalDateTime.now().plusSeconds(expireSeconds);
+        BLACKLIST.add(new BlacklistedToken(token, expiryTime));
         log.debug("Token已加入黑名单: expireSeconds={}", expireSeconds);
     }
 
@@ -44,9 +41,8 @@ public class TokenBlacklistService {
      * @return 是否在黑名单中
      */
     public boolean isBlacklisted(String token) {
-        String key = BLACKLIST_KEY_PREFIX + token;
-        Boolean exists = redisTemplate.hasKey(key);
-        return Boolean.TRUE.equals(exists);
+        return BLACKLIST.stream()
+                .anyMatch(bt -> bt.token.equals(token) && !bt.isExpired());
     }
 
     /**
@@ -55,19 +51,38 @@ public class TokenBlacklistService {
      * @param userId 用户ID
      */
     public void blacklistAllUserTokens(String userId) {
-        // 这里需要维护一个用户Token列表
-        // 简化实现：在Redis中存储用户当前有效的Token
-        String userTokensKey = "user:tokens:" + userId;
-        Object tokens = redisTemplate.opsForValue().get(userTokensKey);
+        // 内存实现简化：只记录黑名单，不维护用户Token列表
+        log.info("用户所有Token请求加入黑名单: userId={}", userId);
+    }
 
-        if (tokens instanceof List) {
-            for (Object token : (List<?>) tokens) {
-                addToBlacklist(token.toString(), 86400); // 24小时
+    /**
+     * 定时清理过期令牌
+     */
+    @Scheduled(fixedRate = 3600000) // 每小时执行一次
+    public void cleanExpiredTokens() {
+        BLACKLIST.removeIf(bt -> {
+            boolean expired = bt.isExpired();
+            if (expired) {
+                log.debug("清理过期黑名单Token");
             }
+            return expired;
+        });
+    }
+
+    /**
+     * 黑名单Token
+     */
+    private static class BlacklistedToken {
+        private final String token;
+        private final LocalDateTime expiryTime;
+
+        public BlacklistedToken(String token, LocalDateTime expiryTime) {
+            this.token = token;
+            this.expiryTime = expiryTime;
         }
 
-        // 清除用户Token列表
-        redisTemplate.delete(userTokensKey);
-        log.info("用户所有Token已加入黑名单: userId={}", userId);
+        public boolean isExpired() {
+            return LocalDateTime.now().isAfter(expiryTime);
+        }
     }
 }

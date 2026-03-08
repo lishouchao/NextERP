@@ -62,8 +62,11 @@ public class AuthService {
             new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
 
-        // 获取当前租户ID
+        // 获取当前租户ID（登录时还未设置到上下文）
         Long tenantId = UserContext.getTenantId();
+        if (tenantId == null) {
+            tenantId = 0L; // 默认租户ID
+        }
 
         // 查询用户信息
         SysUser user = userRepository.findByUsername(request.getUsername(), tenantId)

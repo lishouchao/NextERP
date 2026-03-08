@@ -39,7 +39,7 @@ public class Result<T> {
      * 时间戳
      */
     @Builder.Default
-    private LocalDateTime timestamp = LocalDateTime.now();
+    private String timestamp = java.time.LocalDateTime.now().toString();
 
     /**
      * 请求追踪ID

@@ -25,7 +25,7 @@ import java.util.Set;
     @Index(name = "idx_email", columnList = "email")
 })
 @Data
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)

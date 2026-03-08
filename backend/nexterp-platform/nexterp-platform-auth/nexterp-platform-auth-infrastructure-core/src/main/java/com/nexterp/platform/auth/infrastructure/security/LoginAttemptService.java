@@ -1,9 +1,9 @@
 package com.nexterp.platform.auth.infrastructure.security;
-import java.util.Collection;
-import java.util.List;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class LoginAttemptService {
 
     private static final String ATTEMPT_KEY_PREFIX = "login_attempt:";
@@ -24,10 +25,6 @@ public class LoginAttemptService {
     private static final Duration LOCK_DURATION = Duration.ofMinutes(30);
 
     private final RedisTemplate<String, Object> redisTemplate;
-
-    public LoginAttemptService(RedisTemplate<String, Object> redisTemplate) {
-        this.redisTemplate = redisTemplate;
-    }
 
     /**
      * 登录失败
@@ -98,6 +95,7 @@ public class LoginAttemptService {
     private void lockUser(String username) {
         String lockKey = LOCK_KEY_PREFIX + username;
         redisTemplate.opsForValue().set(lockKey, "locked", LOCK_DURATION);
+        log.warn("用户已被锁定: username={}", username);
     }
 
     /**
@@ -110,5 +108,14 @@ public class LoginAttemptService {
         String key = ATTEMPT_KEY_PREFIX + username;
         Object attempts = redisTemplate.opsForValue().get(key);
         return attempts != null ? (Integer) attempts : 0;
+    }
+
+    /**
+     * 定时清理过期登录记录（每天凌晨3点）
+     */
+    @Scheduled(cron = "0 0 3 * *")
+    public void cleanExpiredLoginAttempts() {
+        // Redis 实现：通过设置过期时间来自动清理
+        log.debug("定时清理过期登录记录");
     }
 }
