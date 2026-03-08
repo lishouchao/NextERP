@@ -1,4 +1,4 @@
-# NextERP 国产ERP技术架构方案
+# NextERP 下一代ERP技术架构方案
 
 ## 项目概述
 

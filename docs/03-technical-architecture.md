@@ -1,4 +1,4 @@
-# NextERP 国产ERP技术架构方案 v2.0
+# NextERP 下一代ERP技术架构方案 v2.0
 
 > **架构决策**：采用模块化单体 (Modular Monolith) 架构，预留微服务演进路径
 
