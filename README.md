@@ -5,11 +5,11 @@
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Next.js](https://img.shields.io/badge/Next.js-14.0.4-black.svg)](https://nextjs.org/)
 
-> 国产 ERP 系统基于模块化单体架构
+> 下一代 ERP 系统基于模块化单体架构
 
 ## 项目简介
 
-NextERP 是一个基于模块化单体架构的国产 ERP 系统，采用 Spring Boot 3.2 + Java 21 后端，Next.js 14 前端技术栈。
+NextERP 是一个基于模块化单体架构的下一代 ERP 系统，采用 Spring Boot 3.2 + Java 21 后端，Next.js 14 前端技术栈。
 
 ## 技术栈
 
@@ -69,12 +69,35 @@ nexterp/
 
 ### 环境要求
 
+**后端**
 - JDK 21+
+- Maven 3.9+
+- Docker & Docker Compose (可选，用于启动 PostgreSQL/Redis/RabbitMQ)
+
+**前端**
 - Node.js 20+
 - pnpm 8+
-- Docker & Docker Compose (可选)
 
 ### 本地开发
+
+**开发模式（使用 H2 内存数据库，无需启动额外服务）**
+
+1. **启动后端**
+```bash
+cd backend/nexterp-platform/nexterp-platform-auth/nexterp-platform-auth-interfaces
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+2. **启动前端**
+```bash
+cd frontend
+pnpm install
+pnpm dev
+```
+
+访问 http://localhost:3000
+
+**生产模式（需要启动数据库服务）**
 
 1. **启动数据库服务**
 ```bash
@@ -85,7 +108,8 @@ docker-compose up -d postgres redis rabbitmq
 2. **启动后端**
 ```bash
 cd backend
-./mvnw spring-boot:run
+mvn clean install
+mvn spring-boot:run
 ```
 
 3. **启动前端**
@@ -94,8 +118,6 @@ cd frontend
 pnpm install
 pnpm dev
 ```
-
-访问 http://localhost:3000
 
 ## 开发规范
 
