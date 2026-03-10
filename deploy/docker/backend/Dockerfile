@@ -1,29 +1,20 @@
-# Multi-stage build for NextERP Backend
+# Multi-stage build for NextERP Backend (Spring Modulith)
 # Stage 1: Build
 FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
 
 WORKDIR /build
 
-# Copy Maven wrapper and POM files
-COPY .mvn/ .mvn/
-COPY mvnw pom.xml ./
-COPY backend/pom.xml ./backend/
-COPY backend/nexterp-bom/pom.xml ./backend/nexterp-bom/
-COPY backend/nexterp-platform/pom.xml ./backend/nexterp-platform/
-COPY backend/nexterp-business/pom.xml ./backend/nexterp-business/
-COPY backend/nexterp-shared/pom.xml ./backend/nexterp-shared/
-COPY backend/nexterp-api/pom.xml ./backend/nexterp-api/
-COPY backend/nexterp-assembly/pom.xml ./backend/nexterp-assembly/
-COPY backend/nexterp-starters/pom.xml ./backend/nexterp-starters/
+# Copy POM file (single module - much simpler!)
+COPY backend-modulith/pom.xml ./
 
 # Download dependencies
-RUN ./mvnw dependency:go-offline -B
+RUN mvn dependency:go-offline -B || true
 
 # Copy source code
-COPY backend/ ./backend/
+COPY backend-modulith/src ./src
 
-# Build
-RUN ./mvnw clean package -DskipTests -B
+# Build (single module - faster!)
+RUN mvn clean package -DskipTests -B
 
 # Stage 2: Runtime
 FROM eclipse-temurin:21-jre-alpine
@@ -36,8 +27,8 @@ RUN apk add --no-cache dumb-init tzdata
 # Set timezone
 ENV TZ=Asia/Shanghai
 
-# Copy JAR file from builder
-COPY --from=builder /build/backend/nexterp-assembly/nexterp-assembly-full/target/nexterp-assembly-full-*.jar app.jar
+# Copy JAR file from builder (single JAR)
+COPY --from=builder /build/target/nexterp-*.jar app.jar
 
 # Create non-root user
 RUN addgroup -S nexterp && adduser -S nexterp -G nexterp

@@ -21,10 +21,7 @@ const nextConfig = {
   },
 
   // 输出配置
-  output: 'standalone',
-
-  // 严格模式
-  strictMode: true
+  output: 'standalone'
 };
 
 module.exports = nextConfig;

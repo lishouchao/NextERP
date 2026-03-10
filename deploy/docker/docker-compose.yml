@@ -62,7 +62,7 @@ services:
   # NextERP Backend
   backend:
     build:
-      context: ..
+      context: ../..
       dockerfile: deploy/docker/backend/Dockerfile
     container_name: nexterp-backend
     environment:
@@ -99,7 +99,7 @@ services:
   # NextERP Frontend (Web)
   frontend:
     build:
-      context: ..
+      context: ../..
       dockerfile: deploy/docker/frontend/Dockerfile
     container_name: nexterp-frontend
     environment:
