@@ -8,7 +8,7 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/nexterp}
     username: ${SPRING_DATASOURCE_USERNAME:nexterp}
-    password: ${SPRING_DATASOURCE_PASSWORD:nexterp123}
+    password: ${SPRING_DATASOURCE_PASSWORD:nexterp}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -29,7 +29,7 @@ spring:
     redis:
       host: ${SPRING_REDIS_HOST:localhost}
       port: ${SPRING_REDIS_PORT:6379}
-      password: ${SPRING_REDIS_PASSWORD:}
+      password: ${SPRING_REDIS_PASSWORD:nexterp}
       timeout: 10000ms
 
   rabbitmq:

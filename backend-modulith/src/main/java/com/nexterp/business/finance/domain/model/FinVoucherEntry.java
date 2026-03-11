@@ -23,6 +23,14 @@ import java.math.BigDecimal;
 public class FinVoucherEntry extends BaseEntity {
 
     /**
+     * 主键ID
+     */
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    /**
      * 凭证ID
      */
     @Column(name = "voucher_id", nullable = false)

@@ -25,6 +25,14 @@ import java.time.LocalDateTime;
 public class ProProductionOrderDetail extends BaseEntity {
 
     /**
+     * 主键ID
+     */
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    /**
      * 生产订单ID
      */
     @Column(name = "production_order_id", nullable = false)

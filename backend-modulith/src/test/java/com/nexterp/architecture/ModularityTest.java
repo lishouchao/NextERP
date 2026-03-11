@@ -4,6 +4,7 @@ import com.nexterp.NexterpApplication;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
+import org.springframework.modulith.core.DependencyType;
 import org.springframework.modulith.docs.Documenter;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,13 +32,13 @@ class ModularityTest {
             System.out.println("逻辑名称: " + module.getName());
             System.out.println("基础包: " + module.getBasePackage().getName());
             System.out.println("\nSpring Beans:");
-            module.getBeanReferences().forEach(ref -> {
-                String visibility = ref.isApi() ? "API" : "内部";
-                System.out.println("  [" + visibility + "] " + ref.getType().getSimpleName());
+            module.getBeans().forEach(bean -> {
+                String visibility = bean.isExposed() ? "API" : "内部";
+                System.out.println("  [" + visibility + "] " + bean.getType().getSimpleName());
             });
             System.out.println("\n依赖模块:");
-            module.getDependencies().forEach(dep ->
-                System.out.println("  -> " + dep.getModuleName())
+            module.getDependencies(modules, DependencyType.values()).forEach(dep ->
+                System.out.println("  -> " + dep.getModule().getName())
             );
         });
     }
@@ -60,8 +61,9 @@ class ModularityTest {
             .toList();
 
         for (var module : businessModules) {
-            var hasBusinessDependency = module.getDependencies().stream()
-                .anyMatch(dep -> dep.getModuleName().startsWith("business"));
+            var dependencies = module.getDependencies(modules, DependencyType.values());
+            var hasBusinessDependency = dependencies.stream()
+                .anyMatch(dep -> dep.getModule().getName().startsWith("business"));
 
             assertThat(hasBusinessDependency)
                 .as("业务模块 %s 不应直接依赖其他业务模块", module.getDisplayName())

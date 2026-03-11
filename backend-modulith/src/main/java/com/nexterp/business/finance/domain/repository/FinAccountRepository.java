@@ -41,7 +41,7 @@ public interface FinAccountRepository extends TenantAwareRepository<FinAccount> 
      * @param tenantId 租户ID
      * @return 科目列表
      */
-    List<FinAccount> findByTenantIdAndIsDeletedFalseOrderBySortOrderAscAccountIdAsc(Long tenantId);
+    List<FinAccount> findByTenantIdAndIsDeletedFalseOrderBySortOrderAscIdAsc(Long tenantId);
 
     /**
      * 查询指定类型的科目

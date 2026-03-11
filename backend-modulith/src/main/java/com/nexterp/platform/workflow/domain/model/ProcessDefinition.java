@@ -89,4 +89,11 @@ public class ProcessDefinition extends BaseEntity {
      */
     @Column(name = "enabled")
     private Boolean enabled = true;
+
+    /**
+     * 是否删除
+     */
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private Boolean isDeleted = false;
 }

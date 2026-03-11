@@ -1,5 +1,7 @@
 package com.nexterp.platform.auth.infrastructure.security;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 import com.nexterp.shared.security.properties.JwtProperties;
@@ -164,11 +166,11 @@ public class JwtTokenProvider {
      * @return 声明 Map
      */
     private Map<String, Object> buildClaims(UserInfo userInfo) {
-        return Map.of(
-            "userId", userInfo.getUserId(),
-            "tenantId", userInfo.getTenantId(),
-            "roles", userInfo.getRoles(),
-            "permissions", userInfo.getPermissions()
-        );
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", userInfo.getUserId());
+        claims.put("tenantId", userInfo.getTenantId());
+        claims.put("roles", userInfo.getRoles() != null ? userInfo.getRoles() : Collections.emptyList());
+        claims.put("permissions", userInfo.getPermissions() != null ? userInfo.getPermissions() : Collections.emptyList());
+        return claims;
     }
 }

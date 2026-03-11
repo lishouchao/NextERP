@@ -4,10 +4,9 @@ import com.nexterp.shared.security.properties.JwtProperties;
 import com.nexterp.platform.auth.infrastructure.security.JwtAuthenticationFilter;
 import com.nexterp.platform.auth.infrastructure.security.JwtSecurityContextRepository;
 import com.nexterp.platform.auth.infrastructure.security.JwtTokenProvider;
-import com.nexterp.platform.auth.infrastructure.handlers.JwtAuthenticationEntryPoint;
-import com.nexterp.platform.auth.infrastructure.handlers.JwtAccessDeniedHandler;
+import com.nexterp.platform.auth.infrastructure.security.JwtAuthenticationEntryPoint;
+import com.nexterp.platform.auth.infrastructure.security.JwtAccessDeniedHandler;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -120,7 +119,6 @@ public class SecurityConfig {
 
             // 配置授权规则
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(PathRequest.toH2Console()).permitAll()
                 .requestMatchers(AUTH_WHITELIST).permitAll()
                 .anyRequest().authenticated()
             )

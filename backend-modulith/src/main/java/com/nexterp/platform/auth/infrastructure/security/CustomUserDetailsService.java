@@ -50,7 +50,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     /**
      * 构建用户详情
      */
-    private User buildUserDetails(SysUser user) {
+    private UserDetails buildUserDetails(SysUser user) {
         return User.builder()
                 .username(user.getUsername())
                 .password(user.getPassword())

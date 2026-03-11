@@ -23,6 +23,14 @@ import java.math.BigDecimal;
 public class ProRoutingDetail extends BaseEntity {
 
     /**
+     * 主键ID
+     */
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    /**
      * 工艺路线ID
      */
     @Column(name = "routing_id", nullable = false)

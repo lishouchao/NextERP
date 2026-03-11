@@ -28,6 +28,14 @@ import java.util.List;
 public class ProProductionOrder extends TenantAwareEntity {
 
     /**
+     * 主键ID
+     */
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    /**
      * 生产订单号
      */
     @Column(name = "order_no", nullable = false, length = 50)

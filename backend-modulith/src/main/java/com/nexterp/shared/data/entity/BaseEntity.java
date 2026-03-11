@@ -2,6 +2,7 @@ package com.nexterp.shared.data.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -52,6 +53,13 @@ public abstract class BaseEntity {
     @LastModifiedBy
     @Column(name = "updated_by", length = 50)
     private String updatedBy;
+
+    /**
+     * 是否删除
+     */
+    @Column(name = "is_deleted", nullable = false)
+    @Builder.Default
+    private Boolean isDeleted = false;
 
     /**
      * 持久化前的回调方法

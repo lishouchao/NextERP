@@ -25,6 +25,14 @@ import java.util.List;
 public class ProRouting extends TenantAwareEntity {
 
     /**
+     * 主键ID
+     */
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    /**
      * 工艺路线编码
      */
     @Column(name = "routing_code", nullable = false, length = 50)

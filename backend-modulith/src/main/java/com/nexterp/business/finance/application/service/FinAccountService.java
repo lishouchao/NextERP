@@ -189,7 +189,7 @@ public class FinAccountService {
      * @return 科目树
      */
     public List<FinAccount> getAccountTree(Long tenantId) {
-        List<FinAccount> allAccounts = accountRepository.findByTenantIdAndIsDeletedFalseOrderBySortOrderAscAccountIdAsc(tenantId);
+        List<FinAccount> allAccounts = accountRepository.findByTenantIdAndIsDeletedFalseOrderBySortOrderAscIdAsc(tenantId);
         return buildAccountTree(allAccounts, null);
     }
 

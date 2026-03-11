@@ -26,6 +26,14 @@ import java.util.List;
 public class ProWorkProcess extends TenantAwareEntity {
 
     /**
+     * 主键ID
+     */
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    /**
      * 工序编码
      */
     @Column(name = "process_code", nullable = false, length = 50)
