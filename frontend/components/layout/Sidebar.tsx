@@ -35,8 +35,12 @@ const menuItems = [
     icon: <TeamOutlined />,
     label: '人力资源',
     children: [
+      { key: '/hrm/organization', label: '组织管理', href: '/hrm/organization' },
       { key: '/hrm/employees', label: '员工管理', href: '/hrm/employees' },
-      { key: '/hrm/departments', label: '部门管理', href: '/hrm/departments' },
+      { key: '/hrm/actions', label: '人事措施', href: '/hrm/actions' },
+      { key: '/hrm/attendance', label: '考勤管理', href: '/hrm/attendance' },
+      { key: '/hrm/leave', label: '请假管理', href: '/hrm/leave' },
+      { key: '/hrm/payroll', label: '薪酬管理', href: '/hrm/payroll' },
     ],
   },
   {
