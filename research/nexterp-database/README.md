@@ -42,6 +42,9 @@ CREATE POLICY tenant_isolation ON table_name
 ```
 nexterp-database/
 ├── README.md                    # 本文档
+├── DATABASE-DESIGN.md           # 数据库设计文档
+├── OPTIMIZATION-ANALYSIS.md     # 优化分析文档
+├── OPTIMIZATION-SUMMARY.md      # 优化总结文档
 ├── schema/                      # 数据库模式定义
 │   ├── 00-core.sql             # 核心表和通用函数
 │   ├── 01-tenant.sql           # 多租户
@@ -52,12 +55,37 @@ nexterp-database/
 │   ├── 06-pp.sql               # 生产计划
 │   ├── 07-hr.sql               # 人力资源
 │   ├── 08-workflow.sql         # 工作流
-│   └── 99-views.sql            # 视图定义
+│   ├── 99-views.sql            # 视图定义
+│   └── optimizations/          # 优化版模式
+│       ├── 00-core-optimized.sql
+│       ├── 01-tenant-optimized.sql
+│       ├── 02-business-partner-optimized.sql
+│       ├── 03-fi-co-optimized.sql
+│       ├── 04-mm-optimized.sql
+│       ├── 07-hr-optimized.sql
+│       └── 99-views-optimized.sql
 ├── diagrams/                    # ER 图
 │   └── erd.md                  # Mermaid ERD
 └── migrations/                  # 迁移脚本
     └── V1__initial_schema.sql  # 初始化脚本
 ```
+
+## 优化版 Schema
+
+优化版 schema 提供以下增强功能：
+
+| 优化项 | 说明 |
+|--------|------|
+| 表分区 | 会计凭证、采购订单、薪酬结果按年度分区 |
+| 统一审计 | 自动处理 created_at/updated_at/version |
+| 乐观锁 | 防止并发更新冲突 |
+| 时间约束 | 排他约束防止时间重叠 |
+| 全文搜索 | 业务伙伴、物料全文搜索支持 |
+| 生成列 | 可用库存、开放数量自动计算 |
+| RLS | 行级安全多租户隔离 |
+| 库存快照 | 月度库存快照优化报表 |
+
+详细说明请参考 [OPTIMIZATION-SUMMARY.md](./OPTIMIZATION-SUMMARY.md)
 
 ## 模块概览
 
@@ -180,10 +208,13 @@ CREATE DATABASE nexterp
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pg_trgm";  -- 模糊搜索
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";    -- 模糊搜索
+CREATE EXTENSION IF NOT EXISTS "btree_gist"; -- 排他约束（优化版需要）
 ```
 
 ### 3. 执行初始化脚本
+
+#### 原始版 Schema
 
 ```bash
 psql -d nexterp -f schema/00-core.sql
@@ -192,8 +223,30 @@ psql -d nexterp -f schema/02-business-partner.sql
 # ... 按顺序执行
 ```
 
+#### 优化版 Schema（推荐用于生产环境）
+
+```bash
+# 1. 核心函数（必须首先执行）
+psql -d nexterp -f schema/optimizations/00-core-optimized.sql
+
+# 2. 基础表
+psql -d nexterp -f schema/optimizations/01-tenant-optimized.sql
+psql -d nexterp -f schema/optimizations/02-business-partner-optimized.sql
+
+# 3. 业务模块
+psql -d nexterp -f schema/optimizations/03-fi-co-optimized.sql
+psql -d nexterp -f schema/optimizations/04-mm-optimized.sql
+psql -d nexterp -f schema/optimizations/07-hr-optimized.sql
+
+# 4. 视图
+psql -d nexterp -f schema/optimizations/99-views-optimized.sql
+```
+
 ## 参考文档
 
+- [数据库设计文档](./DATABASE-DESIGN.md) - 完整的数据库设计说明
+- [优化分析](./OPTIMIZATION-ANALYSIS.md) - 优化问题分析
+- [优化总结](./OPTIMIZATION-SUMMARY.md) - 已实施的优化说明
 - [PostgreSQL 设计指南](../sap-database/nexterp-postgresql-design-guide.md)
 - [SAP ECC vs S/4HANA 对比](../sap-database/migration/ecc-vs-s4hana-comparison.md)
 - [SAP ECC HR 数据库设计](../sap-database/ecc/hr/README.md)

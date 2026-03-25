@@ -62,6 +62,15 @@ public abstract class BaseEntity {
     private Boolean isDeleted = false;
 
     /**
+     * 乐观锁版本号
+     * 注意：命名为 lockVersion 以避免与业务版本号字段 (version) 冲突
+     */
+    @Version
+    @Column(name = "lock_version")
+    @Builder.Default
+    private Integer lockVersion = 0;
+
+    /**
      * 持久化前的回调方法
      * 确保 createdAt 和 createdBy 在保存前被设置
      */

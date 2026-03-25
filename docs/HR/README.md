@@ -2,29 +2,98 @@
 
 ## 文档目录
 
+### 功能设计文档
+
 | 文档 | 说明 | 状态 |
 |------|------|------|
-| [hr-requirements.md](./hr-requirements.md) | **HR模块需求规格说明书** | ✅ 完成 |
+| [00-HR-OVERVIEW.md](./00-HR-OVERVIEW.md) | **HR模块功能设计总览** | ✅ 完成 |
+| [01-OM-DESIGN.md](./01-OM-DESIGN.md) | **组织管理 (OM)** - 组织架构、职位、职务 | ✅ 完成 |
+| [02-PA-DESIGN.md](./02-PA-DESIGN.md) | **人事管理 (PA)** - 员工主数据、人事操作 | ✅ 完成 |
+| [03-PT-DESIGN.md](./03-PT-DESIGN.md) | **时间管理 (PT)** - 考勤、排班、请假 | ✅ 完成 |
+| [04-PY-DESIGN.md](./04-PY-DESIGN.md) | **薪酬管理 (PY)** - 薪酬计算、社保、个税 | ✅ 完成 |
+| [05-RC-DESIGN.md](./05-RC-DESIGN.md) | **招聘管理 (RC)** - 招聘流程、候选人 | ✅ 完成 |
+| [06-TM-DESIGN.md](./06-TM-DESIGN.md) | **培训管理 (TM)** - 课程、培训班、资格 | ✅ 完成 |
+| [07-PM-DESIGN.md](./07-PM-DESIGN.md) | **绩效管理 (PM)** - 目标、考核、评估 | ✅ 完成 |
+| [08-SP-DESIGN.md](./08-SP-DESIGN.md) | **继任计划 (SP)** - 人才池、继任者 | ✅ 完成 |
+
+### 其他文档
+
+| 文档 | 说明 | 状态 |
+|------|------|------|
+| [hr-requirements.md](./hr-requirements.md) | HR模块需求规格说明书 | ✅ 完成 |
 | [hr-module-analysis.md](./hr-module-analysis.md) | HR模块 vs SAP S/4 HANA HCM 对比分析 | ✅ 完成 |
+
+### 待完成文档
+
+| 文档 | 说明 | 状态 |
+|------|------|------|
 | data-model.md | HR模块数据模型设计 | 📝 待编写 |
 | api-spec.md | HR模块 API 规范 | 📝 待编写 |
 | workflow-design.md | 人事工作流设计 | 📝 待编写 |
 
+---
+
 ## 快速导航
 
-### 需求文档
-- [模块总体设计](./hr-requirements.md#2-模块总体设计)
-- [组织管理 (OM)](./hr-requirements.md#3-组织管理-om)
-- [人事行政 (PA)](./hr-requirements.md#4-人事行政-pa)
-- [时间管理 (PT)](./hr-requirements.md#5-时间管理-pt)
-- [薪酬管理 (PY)](./hr-requirements.md#6-薪酬管理-py)
-- [人才管理 (TM)](./hr-requirements.md#7-人才管理-tm)
-- [人员发展 (PD)](./hr-requirements.md#8-人员发展-pd)
+### 按业务场景
 
-### 分析文档
-- [设计不足分析](./hr-module-analysis.md#三设计不足详细分析)
-- [改进建议优先级](./hr-module-analysis.md#四改进建议与优先级)
-- [技术架构建议](./hr-module-analysis.md#五技术架构建议)
+| 场景 | 相关文档 |
+|------|----------|
+| 组织架构调整 | [OM 组织管理](./01-OM-DESIGN.md) |
+| 员工入职/离职 | [PA 人事管理](./02-PA-DESIGN.md) |
+| 考勤管理 | [PT 时间管理](./03-PT-DESIGN.md) |
+| 薪资核算 | [PY 薪酬管理](./04-PY-DESIGN.md) |
+| 招聘流程 | [RC 招聘管理](./05-RC-DESIGN.md) |
+| 培训管理 | [TM 培训管理](./06-TM-DESIGN.md) |
+| 绩效考核 | [PM 绩效管理](./07-PM-DESIGN.md) |
+| 人才发展 | [SP 继任计划](./08-SP-DESIGN.md) |
+
+### 按SAP模块对标
+
+| SAP HCM 模块 | NextERP 对应文档 |
+|--------------|------------------|
+| OM (PD) 组织管理 | [01-OM-DESIGN.md](./01-OM-DESIGN.md) |
+| PA 人事管理 | [02-PA-DESIGN.md](./02-PA-DESIGN.md) |
+| PT 时间管理 | [03-PT-DESIGN.md](./03-PT-DESIGN.md) |
+| PY 薪酬管理 | [04-PY-DESIGN.md](./04-PY-DESIGN.md) |
+| PB 招聘管理 | [05-RC-DESIGN.md](./05-RC-DESIGN.md) |
+| PE 培训管理 | [06-TM-DESIGN.md](./06-TM-DESIGN.md) |
+| PM 绩效管理 | [07-PM-DESIGN.md](./07-PM-DESIGN.md) |
+| PP 继任计划 | [08-SP-DESIGN.md](./08-SP-DESIGN.md) |
+
+---
+
+## 模块关系图
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     HR 模块功能架构                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐     │
+│  │    OM    │   │    PA    │   │    PT    │   │    PY    │     │
+│  │ 组织管理 │   │ 人事管理 │   │ 时间管理 │   │ 薪酬管理 │     │
+│  │ (基础)   │   │ (核心)   │   │ (运营)   │   │ (结算)   │     │
+│  └──────────┘   └──────────┘   └──────────┘   └──────────┘     │
+│       ▲              ▲              │              ▲            │
+│       │              │              │              │            │
+│       └──────────────┴──────────────┴──────────────┘            │
+│                                                                  │
+│  ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐     │
+│  │    RC    │   │    TM    │   │    PM    │   │    SP    │     │
+│  │ 招聘管理 │   │ 培训管理 │   │ 绩效管理 │   │ 继任计划 │     │
+│  │ (人才获取)│   │ (人才发展)│   │ (人才评估)│   │ (人才储备)│     │
+│  └──────────┘   └──────────┘   └──────────┘   └──────────┘     │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 相关资源
+
+- [数据库设计文档](../../research/nexterp-database/docs/07-HR-DESIGN.md)
+- [HR一致性检查报告](../../research/nexterp-database/docs/HR-CONSISTENCY-REPORT.md)
 
 ## 相关模块
 
