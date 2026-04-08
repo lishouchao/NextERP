@@ -30,17 +30,17 @@ public interface FiChartOfAccountsRepository extends TenantAwareRepository<FiCha
     /**
      * 根据类型查询
      */
-    List<FiChartOfAccounts> findByCoaTypeAndTenantIdAndIsDeletedFalseOrderBySortOrder(String coaType, Long tenantId);
+    List<FiChartOfAccounts> findByCoaTypeAndTenantIdAndIsDeletedFalseOrderByCoaCodeAsc(String coaType, Long tenantId);
 
     /**
      * 查询集团科目表
      */
-    List<FiChartOfAccounts> findByIsGroupCoaTrueAndTenantIdAndIsDeletedFalseOrderBySortOrder(Long tenantId);
+    List<FiChartOfAccounts> findByIsGroupCoaTrueAndTenantIdAndIsDeletedFalseOrderByCoaCodeAsc(Long tenantId);
 
     /**
      * 查询所有启用的科目表
      */
-    List<FiChartOfAccounts> findByStatusAndTenantIdAndIsDeletedFalseOrderBySortOrder(Integer status, Long tenantId);
+    List<FiChartOfAccounts> findByStatusAndTenantIdAndIsDeletedFalseOrderByCoaCodeAsc(Integer status, Long tenantId);
 
     /**
      * 查询当前有效的科目表
@@ -48,6 +48,6 @@ public interface FiChartOfAccountsRepository extends TenantAwareRepository<FiCha
     @Query("SELECT c FROM FiChartOfAccounts c WHERE c.tenantId = :tenantId " +
            "AND c.isDeleted = false AND c.status = 1 " +
            "AND c.validFrom <= CURRENT_DATE AND c.validTo >= CURRENT_DATE " +
-           "ORDER BY c.sortOrder")
+           "ORDER BY c.coaCode")
     List<FiChartOfAccounts> findValidCoaByTenantId(@Param("tenantId") Long tenantId);
 }

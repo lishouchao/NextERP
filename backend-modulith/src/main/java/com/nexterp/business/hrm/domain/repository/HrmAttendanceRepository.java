@@ -29,12 +29,6 @@ public interface HrmAttendanceRepository extends TenantAwareRepository<HrmAttend
             Long employeeId, LocalDate startDate, LocalDate endDate, Long tenantId);
 
     /**
-     * 按部门查询
-     */
-    List<HrmAttendance> findByDepartmentIdAndAttendanceDateBetweenAndTenantIdAndIsDeletedFalse(
-            Long departmentId, LocalDate startDate, LocalDate endDate, Long tenantId);
-
-    /**
      * 按考勤状态查询
      */
     List<HrmAttendance> findByAttendanceStatusAndTenantIdAndIsDeletedFalse(String attendanceStatus, Long tenantId);

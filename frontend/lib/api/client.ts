@@ -2,7 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { ApiResponse } from '@/types';
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8082',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -49,7 +49,7 @@ async function refreshAccessToken(): Promise<string | null> {
 
   try {
     const response = await axios.post(
-      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/auth/refresh`,
+      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8082'}/api/v1/auth/refresh`,
       { refreshToken },
       { timeout: 10000 }
     );

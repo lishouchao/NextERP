@@ -50,6 +50,41 @@ export type ApprovalStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CA
 
 // ==================== 组织管理 (OM) ====================
 
+/** 部门（旧版类型，兼容遗留代码）*/
+export interface Department {
+  id: number;
+  deptName: string;
+  deptCode: string;
+  parentId: number | null;
+  sort: number;
+  status: number;
+  remark?: string;
+}
+
+/** 员工（旧版类型，兼容遗留代码）*/
+export interface LegacyEmployee {
+  id: number;
+  employeeNo: string;
+  employeeName: string;
+  englishName?: string;
+  gender: number; // 1=男 2=女
+  birthDate: string;
+  nation?: string;
+  idCard: string;
+  nativePlace?: string;
+  politicalStatus?: string;
+  maritalStatus: number;
+  education: number;
+  phone?: string;
+  email?: string;
+  deptId: number;
+  deptName?: string;
+  position?: string;
+  hireDate: string;
+  workStatus: number;
+  status: number;
+}
+
 /** 组织单位 */
 export interface OrgUnit {
   id: string;

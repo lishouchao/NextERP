@@ -85,7 +85,7 @@ export default function LoginPage() {
 
         <div style={{ textAlign: 'center' }}>
           <Text type="secondary">
-            默认账号: admin / admin123
+            默认账号: admin / admin
           </Text>
         </div>
       </Card>

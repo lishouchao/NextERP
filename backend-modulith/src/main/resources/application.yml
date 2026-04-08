@@ -30,13 +30,15 @@ spring:
   data:
     redis:
       host: ${SPRING_REDIS_HOST:localhost}
-      port: ${SPRING_REDIS_PORT:6380}
+      port: ${SPRING_REDIS_PORT:6381}
       password: ${SPRING_REDIS_PASSWORD:nexterp}
       timeout: 10000ms
+      # Don't fail if Redis is not available
+      connect-timeout: 1000ms
 
   rabbitmq:
     host: ${SPRING_RABBITMQ_HOST:localhost}
-    port: ${SPRING_RABBITMQ_PORT:5673}
+    port: ${SPRING_RABBITMQ_PORT:5674}
     username: ${SPRING_RABBITMQ_USERNAME:nexterp}
     password: ${SPRING_RABBITMQ_PASSWORD:nexterp}
 

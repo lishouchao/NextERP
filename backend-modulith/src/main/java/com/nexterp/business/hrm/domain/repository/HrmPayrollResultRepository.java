@@ -41,5 +41,5 @@ public interface HrmPayrollResultRepository extends TenantAwareRepository<HrmPay
     /**
      * 按状态查询
      */
-    List<HrmPayrollResult> findByPayrollStatusAndTenantIdAndIsDeletedFalse(String payrollStatus, Long tenantId);
+    List<HrmPayrollResult> findByPayStatusAndTenantIdAndIsDeletedFalse(String payStatus, Long tenantId);
 }

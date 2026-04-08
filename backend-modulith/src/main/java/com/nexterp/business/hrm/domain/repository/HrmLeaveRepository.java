@@ -40,5 +40,5 @@ public interface HrmLeaveRepository extends TenantAwareRepository<HrmLeave> {
     /**
      * 按当前审批人查询
      */
-    List<HrmLeave> findByCurrentApproverIdAndTenantIdAndIsDeletedFalse(String currentApproverId, Long tenantId);
+    List<HrmLeave> findByCurrentApproverIdAndTenantIdAndIsDeletedFalse(Long currentApproverId, Long tenantId);
 }

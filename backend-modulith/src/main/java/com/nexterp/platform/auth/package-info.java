@@ -3,11 +3,7 @@
  * 类型: OPEN
  * 依赖: shared
  */
-@ApplicationModule(
-    
-    displayName = "认证授权",
-    allowedDependencies = {"shared"}
-)
+@ApplicationModule(displayName = "认证授权", allowedDependencies = {"shared"})
 package com.nexterp.platform.auth;
 
 import org.springframework.modulith.ApplicationModule;

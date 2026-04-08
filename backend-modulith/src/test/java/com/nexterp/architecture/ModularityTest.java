@@ -32,13 +32,13 @@ class ModularityTest {
             System.out.println("逻辑名称: " + module.getName());
             System.out.println("基础包: " + module.getBasePackage().getName());
             System.out.println("\nSpring Beans:");
-            module.getBeans().forEach(bean -> {
-                String visibility = bean.isExposed() ? "API" : "内部";
+            module.getSpringBeans().forEach(bean -> {
+                String visibility = bean.isApiBean() ? "API" : "内部";
                 System.out.println("  [" + visibility + "] " + bean.getType().getSimpleName());
             });
             System.out.println("\n依赖模块:");
-            module.getDependencies(modules, DependencyType.values()).forEach(dep ->
-                System.out.println("  -> " + dep.getModule().getName())
+            module.getDependencies(modules, DependencyType.values()).stream().forEach(dep ->
+                System.out.println("  -> " + dep.getTargetModule().getName())
             );
         });
     }
@@ -63,7 +63,7 @@ class ModularityTest {
         for (var module : businessModules) {
             var dependencies = module.getDependencies(modules, DependencyType.values());
             var hasBusinessDependency = dependencies.stream()
-                .anyMatch(dep -> dep.getModule().getName().startsWith("business"));
+                .anyMatch(dep -> dep.getTargetModule().getName().startsWith("business"));
 
             assertThat(hasBusinessDependency)
                 .as("业务模块 %s 不应直接依赖其他业务模块", module.getDisplayName())

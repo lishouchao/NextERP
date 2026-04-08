@@ -1,4 +1,4 @@
-package com.nexterp.platform.auth.config;
+package com.nexterp.platform.auth.interfaces.config;
 
 import org.springframework.context.annotation.Configuration;
 

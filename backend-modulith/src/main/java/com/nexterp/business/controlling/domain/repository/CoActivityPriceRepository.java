@@ -25,7 +25,7 @@ public interface CoActivityPriceRepository extends TenantAwareRepository<CoActiv
     /**
      * 按价格类型查询
      */
-    List<CoActivityPrice> findByPriceTypeAndTenantIdAndIsDeletedFalse(Long tenantId, String priceType);
+    List<CoActivityPrice> findByPriceTypeAndTenantIdAndIsDeletedFalse(String priceType, Long tenantId);
 
     /**
      * 查询有效价格

@@ -104,5 +104,6 @@ public interface FiGlAccountRepository extends TenantAwareRepository<FiGlAccount
     /**
      * 查询损益科目
      */
-    List<FiGlAccount> findByIsProfitAndLossTrueAndTenantIdAndIsDeletedFalseOrderByAccountCode(Long tenantId);
+    @Query("SELECT a FROM FiGlAccount a WHERE a.tenantId = :tenantId AND a.isDeleted = false AND a.isProfitAndLoss = true ORDER BY a.accountCode")
+    List<FiGlAccount> findByProfitAndLossTrueAndTenantIdAndIsDeletedFalseOrderByAccountCode(@Param("tenantId") Long tenantId);
 }

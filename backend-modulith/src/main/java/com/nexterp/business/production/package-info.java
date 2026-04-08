@@ -3,11 +3,7 @@
  * 类型: CLOSED
  * 依赖: shared, auth, tenant, workflow
  */
-@ApplicationModule(
-    
-    displayName = "生产管理",
-    allowedDependencies = {"shared", "auth", "tenant", "workflow"}
-)
+@ApplicationModule(displayName = "生产管理", allowedDependencies = {"shared", "auth", "tenant", "workflow"})
 package com.nexterp.business.production;
 
 import org.springframework.modulith.ApplicationModule;

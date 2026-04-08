@@ -98,6 +98,11 @@
             <groupId>org.springframework.modulith</groupId>
             <artifactId>spring-modulith-starter-jpa</artifactId>
         </dependency>
+        <!-- Spring Modulith Core (compile scope for custom detection strategy) -->
+        <dependency>
+            <groupId>org.springframework.modulith</groupId>
+            <artifactId>spring-modulith-core</artifactId>
+        </dependency>
 
         <!-- ========== Database ========== -->
         <dependency>

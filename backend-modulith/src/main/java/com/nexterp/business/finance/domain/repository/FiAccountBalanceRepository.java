@@ -21,24 +21,24 @@ public interface FiAccountBalanceRepository extends JpaRepository<FiAccountBalan
     /**
      * 根据公司和科目查找
      */
-    Optional<FiAccountBalance> findByCompanyIdAndAccountIdAndFiscalYearAndCurrencyCodeAndIsDeletedFalse(
+    Optional<FiAccountBalance> findByCompanyIdAndAccountIdAndFiscalYearAndCurrencyCode(
             Long companyId, Long accountId, Integer fiscalYear, String currencyCode);
 
     /**
      * 根据公司查询所有余额
      */
-    List<FiAccountBalance> findByCompanyIdAndFiscalYearAndIsDeletedFalse(Long companyId, Integer fiscalYear);
+    List<FiAccountBalance> findByCompanyIdAndFiscalYear(Long companyId, Integer fiscalYear);
 
     /**
      * 根据科目查询余额
      */
-    List<FiAccountBalance> findByAccountIdAndTenantIdAndIsDeletedFalse(Long accountId, Long tenantId);
+    List<FiAccountBalance> findByAccountIdAndTenantId(Long accountId, Long tenantId);
 
     /**
      * 查询有发生额的科目
      */
     @Query("SELECT b FROM FiAccountBalance b WHERE b.tenantId = :tenantId " +
-           "AND b.fiscalYear = :fiscalYear AND b.isDeleted = false " +
+           "AND b.fiscalYear = :fiscalYear " +
            "AND (b.yearDebit > 0 OR b.yearCredit > 0)")
     List<FiAccountBalance> findWithActivity(@Param("tenantId") Long tenantId,
                                             @Param("fiscalYear") Integer fiscalYear);
@@ -48,7 +48,7 @@ public interface FiAccountBalanceRepository extends JpaRepository<FiAccountBalan
      */
     @Query("SELECT b.endingBalance FROM FiAccountBalance b " +
            "WHERE b.companyId = :companyId AND b.accountId = :accountId " +
-           "AND b.fiscalYear = :fiscalYear AND b.isDeleted = false")
+           "AND b.fiscalYear = :fiscalYear")
     Optional<BigDecimal> findEndingBalance(@Param("companyId") Long companyId,
                                            @Param("accountId") Long accountId,
                                            @Param("fiscalYear") Integer fiscalYear);

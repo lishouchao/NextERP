@@ -86,6 +86,12 @@ public class HrPayrollItem extends TenantAwareEntity {
     private String wageCategory;
 
     /**
+     * 排序号
+     */
+    @Column(name = "sort_order")
+    private Integer sortOrder;
+
+    /**
      * 借贷方向 (D-借方 C-贷方)
      */
     @Column(name = "dc_indicator", length = 1)

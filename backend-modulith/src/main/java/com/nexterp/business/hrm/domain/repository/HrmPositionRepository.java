@@ -2,6 +2,8 @@ package com.nexterp.business.hrm.domain.repository;
 
 import com.nexterp.business.hrm.domain.model.HrmPosition;
 import com.nexterp.shared.data.repository.TenantAwareRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -34,7 +36,8 @@ public interface HrmPositionRepository extends TenantAwareRepository<HrmPosition
     /**
      * 查询有空缺的职位
      */
-    List<HrmPosition> findByTenantIdAndIsDeletedFalseAndHeadCountGreaterThanActualCountOrderByPositionCodeAsc(Long tenantId);
+    @Query("SELECT p FROM HrmPosition p WHERE p.tenantId = :tenantId AND p.isDeleted = false AND p.headCount > p.actualCount ORDER BY p.positionCode ASC")
+    List<HrmPosition> findVacantPositions(@Param("tenantId") Long tenantId);
 
     /**
      * 查询有效职位

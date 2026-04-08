@@ -25,13 +25,13 @@ import {
   ReloadOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
-import type { Employee } from '@/types/hr';
+import type { LegacyEmployee } from '@/types/hr';
 import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
 
 // 模拟员工数据
-const mockEmployees: Employee[] = [
+const mockLegacyEmployees: LegacyEmployee[] = [
   {
     id: 1,
     employeeNo: 'EMP001',
@@ -100,11 +100,11 @@ const mockEmployees: Employee[] = [
   },
 ];
 
-export default function EmployeesPage() {
+export default function LegacyEmployeesPage() {
   const [loading, setLoading] = useState(false);
-  const [employees, setEmployees] = useState<Employee[]>(mockEmployees);
+  const [employees, setLegacyEmployees] = useState<LegacyEmployee[]>(mockLegacyEmployees);
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [editingLegacyEmployee, setEditingLegacyEmployee] = useState<LegacyEmployee | null>(null);
   const [form] = Form.useForm();
   const [searchParams, setSearchParams] = useState({
     employeeName: '',
@@ -113,24 +113,24 @@ export default function EmployeesPage() {
   });
 
   // 加载员工数据
-  const loadEmployees = async () => {
+  const loadLegacyEmployees = async () => {
     setLoading(true);
     // 模拟 API 调用
     setTimeout(() => {
-      setEmployees(mockEmployees);
+      setLegacyEmployees(mockLegacyEmployees);
       setLoading(false);
     }, 500);
   };
 
   useEffect(() => {
-    loadEmployees();
+    loadLegacyEmployees();
   }, []);
 
   // 搜索
   const handleSearch = () => {
     setLoading(true);
     setTimeout(() => {
-      let filtered = mockEmployees;
+      let filtered = mockLegacyEmployees;
       if (searchParams.employeeName) {
         filtered = filtered.filter(e =>
           e.employeeName.includes(searchParams.employeeName) ||
@@ -143,7 +143,7 @@ export default function EmployeesPage() {
       if (searchParams.workStatus !== undefined) {
         filtered = filtered.filter(e => e.workStatus === searchParams.workStatus);
       }
-      setEmployees(filtered);
+      setLegacyEmployees(filtered);
       setLoading(false);
     }, 300);
   };
@@ -155,12 +155,12 @@ export default function EmployeesPage() {
       deptId: undefined,
       workStatus: undefined,
     });
-    loadEmployees();
+    loadLegacyEmployees();
   };
 
   // 打开新增/编辑弹窗
-  const handleOpenModal = (employee?: Employee) => {
-    setEditingEmployee(employee || null);
+  const handleOpenModal = (employee?: LegacyEmployee) => {
+    setEditingLegacyEmployee(employee || null);
     if (employee) {
       form.setFieldsValue({
         ...employee,
@@ -176,7 +176,7 @@ export default function EmployeesPage() {
   // 关闭弹窗
   const handleCloseModal = () => {
     setModalVisible(false);
-    setEditingEmployee(null);
+    setEditingLegacyEmployee(null);
     form.resetFields();
   };
 
@@ -194,18 +194,18 @@ export default function EmployeesPage() {
           hireDate: values.hireDate?.format('YYYY-MM-DD'),
         };
 
-        if (editingEmployee) {
-          setEmployees(prev =>
-            prev.map(e => (e.id === editingEmployee.id ? { ...e, ...formattedValues } : e))
+        if (editingLegacyEmployee) {
+          setLegacyEmployees(prev =>
+            prev.map(e => (e.id === editingLegacyEmployee.id ? { ...e, ...formattedValues } : e))
           );
           message.success('更新员工成功');
         } else {
-          const newEmployee: Employee = {
+          const newLegacyEmployee: LegacyEmployee = {
             id: Math.max(...employees.map(e => e.id)) + 1,
             ...formattedValues,
             status: 1,
           };
-          setEmployees(prev => [...prev, newEmployee]);
+          setLegacyEmployees(prev => [...prev, newLegacyEmployee]);
           message.success('创建员工成功');
         }
         handleCloseModal();
@@ -220,7 +220,7 @@ export default function EmployeesPage() {
   const handleDelete = (id: number) => {
     setLoading(true);
     setTimeout(() => {
-      setEmployees(prev => prev.filter(e => e.id !== id));
+      setLegacyEmployees(prev => prev.filter(e => e.id !== id));
       message.success('删除员工成功');
       setLoading(false);
     }, 300);
@@ -301,7 +301,7 @@ export default function EmployeesPage() {
       key: 'action',
       width: 180,
       fixed: 'right' as const,
-      render: (_: unknown, record: Employee) => (
+      render: (_: unknown, record: LegacyEmployee) => (
         <Space>
           <Button
             type="link"
@@ -330,7 +330,7 @@ export default function EmployeesPage() {
         title="员工管理"
         extra={
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={loadEmployees}>
+            <Button icon={<ReloadOutlined />} onClick={loadLegacyEmployees}>
               刷新
             </Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
@@ -408,7 +408,7 @@ export default function EmployeesPage() {
 
       {/* 新增/编辑弹窗 */}
       <Modal
-        title={editingEmployee ? '编辑员工' : '新增员工'}
+        title={editingLegacyEmployee ? '编辑员工' : '新增员工'}
         open={modalVisible}
         onCancel={handleCloseModal}
         onOk={handleSubmit}
@@ -424,7 +424,7 @@ export default function EmployeesPage() {
                 label="工号"
                 rules={[{ required: true, message: '请输入工号' }]}
               >
-                <Input placeholder="请输入工号" disabled={!!editingEmployee} />
+                <Input placeholder="请输入工号" disabled={!!editingLegacyEmployee} />
               </Form.Item>
             </Col>
             <Col span={12}>

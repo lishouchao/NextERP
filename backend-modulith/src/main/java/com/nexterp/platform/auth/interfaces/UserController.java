@@ -1,4 +1,4 @@
-package com.nexterp.platform.auth.controller;
+package com.nexterp.platform.auth.interfaces;
 
 import com.nexterp.platform.auth.api.dto.request.UserCreateRequest;
 import com.nexterp.platform.auth.api.dto.request.UserQueryRequest;

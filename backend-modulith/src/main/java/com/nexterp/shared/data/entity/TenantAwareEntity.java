@@ -2,7 +2,6 @@ package com.nexterp.shared.data.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -31,13 +30,6 @@ public abstract class TenantAwareEntity extends BaseEntity {
      */
     @Column(name = "tenant_id", nullable = false)
     private Long tenantId;
-
-    /**
-     * 是否删除
-     */
-    @Column(name = "is_deleted", nullable = false)
-    @Builder.Default
-    private Boolean isDeleted = false;
 
     /**
      * 租户ID感知的AuditorProvider
