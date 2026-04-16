@@ -1,0 +1,651 @@
+'use client';
+
+import { useState } from 'react';
+import {
+  Card,
+  Table,
+  Form,
+  Input,
+  Select,
+  Button,
+  Space,
+  Row,
+  Col,
+  Statistic,
+  Tag,
+  Modal,
+  InputNumber,
+  DatePicker,
+  Tabs,
+  Badge,
+  Steps,
+  Descriptions,
+  message,
+  Tooltip,
+  Timeline,
+} from 'antd';
+import {
+  SearchOutlined,
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  ReloadOutlined,
+  CheckOutlined,
+  TruckOutlined,
+  ExportOutlined,
+  SendOutlined,
+  CloseCircleOutlined,
+  InboxOutlined,
+  RightOutlined,
+} from '@ant-design/icons';
+import dayjs from 'dayjs';
+
+const { RangePicker } = DatePicker;
+
+// 交货类型配置
+const deliveryTypeConfig: Record<string, { text: string; color: string }> = {
+  LF: { text: '出库交货', color: 'blue' },
+  LR: { text: '退货交货', color: 'orange' },
+  LO: { text: '无订单交货', color: 'purple' },
+  NL: { text: '补货交货', color: 'cyan' },
+};
+
+// 拣配状态配置
+const pickingStatusConfig: Record<string, { text: string; color: string }> = {
+  A: { text: '未拣配', color: 'default' },
+  B: { text: '部分拣配', color: 'processing' },
+  C: { text: '完全拣配', color: 'green' },
+};
+
+// 发货过账状态配置
+const giStatusConfig: Record<string, { text: string; color: string }> = {
+  A: { text: '未过账', color: 'default' },
+  B: { text: '已过账', color: 'green' },
+};
+
+// 交货状态配置
+const deliveryStatusConfig: Record<string, { text: string; color: string; step: number }> = {
+  '01': { text: '已创建', color: 'default', step: 0 },
+  '02': { text: '拣配中', color: 'processing', step: 1 },
+  '03': { text: '已发货', color: 'blue', step: 2 },
+  '04': { text: '已完成', color: 'green', step: 3 },
+};
+
+// 模拟交货数据
+const mockDeliveries = [
+  {
+    id: 1,
+    deliveryNumber: 'DN-2024-001',
+    deliveryType: 'LF',
+    salesOrder: 'SO-2023-001',
+    customerCode: 'CUST-001',
+    customerName: '北京科技有限公司',
+    documentDate: '2024-01-05',
+    plannedGiDate: '2024-01-08',
+    actualGiDate: '2024-01-08',
+    pickingStatus: 'C',
+    giStatus: 'B',
+    deliveryStatus: '04',
+    totalWeight: 1250.5,
+    weightUnit: 'KG',
+    shippingPoint: 'SP01',
+    items: [
+      { materialCode: 'MAT-001', materialName: '精密轴承 A-100', orderQty: 100, deliveredQty: 100, unit: 'PCS', batch: 'B20240101' },
+      { materialCode: 'MAT-002', materialName: '密封组件 S-200', orderQty: 200, deliveredQty: 200, unit: 'PCS', batch: 'B20240102' },
+    ],
+    createdBy: '仓管员A',
+    createdAt: '2024-01-05 09:30:00',
+  },
+  {
+    id: 2,
+    deliveryNumber: 'DN-2024-002',
+    deliveryType: 'LF',
+    salesOrder: 'SO-2023-002',
+    customerCode: 'CUST-002',
+    customerName: '上海贸易集团',
+    documentDate: '2024-01-08',
+    plannedGiDate: '2024-01-12',
+    actualGiDate: null,
+    pickingStatus: 'B',
+    giStatus: 'A',
+    deliveryStatus: '02',
+    totalWeight: 3200.0,
+    weightUnit: 'KG',
+    shippingPoint: 'SP01',
+    items: [
+      { materialCode: 'MAT-001', materialName: '精密轴承 A-100', orderQty: 150, deliveredQty: 80, unit: 'PCS', batch: 'B20240103' },
+      { materialCode: 'MAT-004', materialName: '工业电机 M-500', orderQty: 50, deliveredQty: 50, unit: 'SET', batch: 'B20240104' },
+      { materialCode: 'MAT-005', materialName: '控制面板 CP-300', orderQty: 10, deliveredQty: 0, unit: 'PCS', batch: '' },
+    ],
+    createdBy: '仓管员B',
+    createdAt: '2024-01-08 14:20:00',
+  },
+  {
+    id: 3,
+    deliveryNumber: 'DN-2024-003',
+    deliveryType: 'LR',
+    salesOrder: 'SO-2023-006',
+    customerCode: 'CUST-005',
+    customerName: '杭州网络科技',
+    documentDate: '2024-01-10',
+    plannedGiDate: '2024-01-13',
+    actualGiDate: null,
+    pickingStatus: 'A',
+    giStatus: 'A',
+    deliveryStatus: '01',
+    totalWeight: 80.0,
+    weightUnit: 'KG',
+    shippingPoint: 'SP02',
+    items: [
+      { materialCode: 'MAT-003', materialName: '传感器模组 T-150', orderQty: 20, deliveredQty: 0, unit: 'PCS', batch: '' },
+    ],
+    createdBy: '仓管员A',
+    createdAt: '2024-01-10 10:00:00',
+  },
+  {
+    id: 4,
+    deliveryNumber: 'DN-2024-004',
+    deliveryType: 'LF',
+    salesOrder: 'SO-2023-003',
+    customerCode: 'CUST-003',
+    customerName: '广州制造企业',
+    documentDate: '2024-01-12',
+    plannedGiDate: '2024-01-15',
+    actualGiDate: null,
+    pickingStatus: 'A',
+    giStatus: 'A',
+    deliveryStatus: '01',
+    totalWeight: 560.0,
+    weightUnit: 'KG',
+    shippingPoint: 'SP01',
+    items: [
+      { materialCode: 'MAT-006', materialName: '液压阀门 H-800', orderQty: 30, deliveredQty: 0, unit: 'PCS', batch: '' },
+      { materialCode: 'MAT-007', materialName: '连接法兰 F-400', orderQty: 60, deliveredQty: 0, unit: 'PCS', batch: '' },
+    ],
+    createdBy: '仓管员C',
+    createdAt: '2024-01-12 08:45:00',
+  },
+  {
+    id: 5,
+    deliveryNumber: 'DN-2024-005',
+    deliveryType: 'NL',
+    salesOrder: null,
+    customerCode: 'CUST-004',
+    customerName: '深圳电子公司',
+    documentDate: '2024-01-14',
+    plannedGiDate: '2024-01-16',
+    actualGiDate: '2024-01-16',
+    pickingStatus: 'C',
+    giStatus: 'B',
+    deliveryStatus: '04',
+    totalWeight: 2100.0,
+    weightUnit: 'KG',
+    shippingPoint: 'SP02',
+    items: [
+      { materialCode: 'MAT-008', materialName: '电源模块 PM-600', orderQty: 200, deliveredQty: 200, unit: 'PCS', batch: 'B20240110' },
+    ],
+    createdBy: '仓管员A',
+    createdAt: '2024-01-14 11:15:00',
+  },
+  {
+    id: 6,
+    deliveryNumber: 'DN-2024-006',
+    deliveryType: 'LO',
+    salesOrder: null,
+    customerCode: 'CUST-001',
+    customerName: '北京科技有限公司',
+    documentDate: '2024-01-15',
+    plannedGiDate: '2024-01-18',
+    actualGiDate: null,
+    pickingStatus: 'B',
+    giStatus: 'A',
+    deliveryStatus: '02',
+    totalWeight: 450.0,
+    weightUnit: 'KG',
+    shippingPoint: 'SP01',
+    items: [
+      { materialCode: 'MAT-009', materialName: '伺服驱动器 SD-200', orderQty: 15, deliveredQty: 10, unit: 'SET', batch: 'B20240112' },
+      { materialCode: 'MAT-010', materialName: '编码器 EN-100', orderQty: 30, deliveredQty: 0, unit: 'PCS', batch: '' },
+    ],
+    createdBy: '仓管员B',
+    createdAt: '2024-01-15 16:30:00',
+  },
+];
+
+// 模拟销售订单（供新建交货选择）
+const mockSalesOrders = [
+  { orderNo: 'SO-2023-001', customerName: '北京科技有限公司', items: 5, status: '已审批' },
+  { orderNo: 'SO-2023-002', customerName: '上海贸易集团', items: 3, status: '已审批' },
+  { orderNo: 'SO-2023-003', customerName: '广州制造企业', items: 2, status: '已审批' },
+  { orderNo: 'SO-2023-004', customerName: '北京科技有限公司', items: 4, status: '已审批' },
+  { orderNo: 'SO-2023-005', customerName: '深圳电子公司', items: 8, status: '部分发货' },
+];
+
+// 装运点
+const shippingPoints = [
+  { value: 'SP01', label: 'SP01 - 主仓库' },
+  { value: 'SP02', label: 'SP02 - 副仓库' },
+  { value: 'SP03', label: 'SP03 - 外协仓库' },
+];
+
+export default function DeliveriesPage() {
+  const [loading, setLoading] = useState(false);
+  const [deliveries, setDeliveries] = useState(mockDeliveries);
+  const [activeTab, setActiveTab] = useState('all');
+  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [selectedDelivery, setSelectedDelivery] = useState<typeof mockDeliveries[0] | null>(null);
+  const [form] = Form.useForm();
+
+  // 按状态筛选
+  const filteredDeliveries = activeTab === 'all' ? deliveries : deliveries.filter(d => {
+    if (activeTab === 'pending') return d.deliveryStatus === '01';
+    if (activeTab === 'picking') return d.deliveryStatus === '02';
+    if (activeTab === 'shipped') return d.deliveryStatus === '03' || d.deliveryStatus === '04';
+    return true;
+  });
+
+  // 统计
+  const stats = {
+    total: deliveries.length,
+    pendingPicking: deliveries.filter(d => d.pickingStatus === 'A').length,
+    pendingGi: deliveries.filter(d => d.giStatus === 'A' && d.pickingStatus === 'C').length,
+    completed: deliveries.filter(d => d.deliveryStatus === '04').length,
+  };
+
+  // 交货列表列
+  const columns = [
+    {
+      title: '交货单号',
+      dataIndex: 'deliveryNumber',
+      key: 'deliveryNumber',
+      width: 140,
+      fixed: 'left' as const,
+      render: (text: string, record: typeof mockDeliveries[0]) => (
+        <a onClick={() => { setSelectedDelivery(record); setDetailModalVisible(true); }}>{text}</a>
+      ),
+    },
+    {
+      title: '交货类型',
+      dataIndex: 'deliveryType',
+      key: 'deliveryType',
+      width: 100,
+      render: (type: string) => {
+        const config = deliveryTypeConfig[type];
+        return <Tag color={config?.color}>{type} - {config?.text}</Tag>;
+      },
+    },
+    {
+      title: '客户名称',
+      dataIndex: 'customerName',
+      key: 'customerName',
+      width: 150,
+    },
+    {
+      title: '单据日期',
+      dataIndex: 'documentDate',
+      key: 'documentDate',
+      width: 110,
+    },
+    {
+      title: '计划发货日',
+      dataIndex: 'plannedGiDate',
+      key: 'plannedGiDate',
+      width: 110,
+      render: (date: string, record: typeof mockDeliveries[0]) => {
+        const isOverdue = dayjs(date).isBefore(dayjs(), 'day') && record.deliveryStatus !== '04';
+        return <span style={{ color: isOverdue ? '#ff4d4f' : 'inherit' }}>{date}</span>;
+      },
+    },
+    {
+      title: '总重量',
+      dataIndex: 'totalWeight',
+      key: 'totalWeight',
+      width: 100,
+      align: 'right' as const,
+      render: (v: number, record: typeof mockDeliveries[0]) => `${v.toFixed(1)} ${record.weightUnit}`,
+    },
+    {
+      title: '拣配状态',
+      dataIndex: 'pickingStatus',
+      key: 'pickingStatus',
+      width: 100,
+      render: (status: string) => {
+        const config = pickingStatusConfig[status];
+        return <Tag color={config?.color}>{config?.text}</Tag>;
+      },
+    },
+    {
+      title: '发货过账',
+      dataIndex: 'giStatus',
+      key: 'giStatus',
+      width: 90,
+      render: (status: string) => {
+        const config = giStatusConfig[status];
+        return <Tag color={config?.color}>{config?.text}</Tag>;
+      },
+    },
+    {
+      title: '交货状态',
+      dataIndex: 'deliveryStatus',
+      key: 'deliveryStatus',
+      width: 100,
+      render: (status: string) => {
+        const config = deliveryStatusConfig[status];
+        return <Tag color={config?.color}>{config?.text}</Tag>;
+      },
+    },
+    {
+      title: '装运点',
+      dataIndex: 'shippingPoint',
+      key: 'shippingPoint',
+      width: 90,
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 200,
+      fixed: 'right' as const,
+      render: (_: unknown, record: typeof mockDeliveries[0]) => (
+        <Space size="small">
+          <Button type="link" size="small" onClick={() => { setSelectedDelivery(record); setDetailModalVisible(true); }}>
+            详情
+          </Button>
+          {record.pickingStatus === 'A' && (
+            <Tooltip title="确认拣配">
+              <Button type="link" size="small" icon={<InboxOutlined />} style={{ color: '#1890ff' }}>
+                拣配
+              </Button>
+            </Tooltip>
+          )}
+          {record.pickingStatus === 'C' && record.giStatus === 'A' && (
+            <Tooltip title="发货过账">
+              <Button type="link" size="small" icon={<SendOutlined />} style={{ color: '#52c41a' }}>
+                过账
+              </Button>
+            </Tooltip>
+          )}
+          {record.deliveryStatus !== '04' && (
+            <Tooltip title="取消交货">
+              <Button type="link" size="small" danger icon={<CloseCircleOutlined />}>
+                取消
+              </Button>
+            </Tooltip>
+          )}
+        </Space>
+      ),
+    },
+  ];
+
+  return (
+    <div style={{ padding: 24 }}>
+      <Card
+        title="交货管理 (对标 SAP VL01N/VL02N)"
+        extra={
+          <Space>
+            <Button icon={<ReloadOutlined />} onClick={() => setLoading(!loading)}>刷新</Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)}>
+              新建交货单
+            </Button>
+          </Space>
+        }
+      >
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={[
+            { key: 'all', label: <><TruckOutlined /> 全部交货</> },
+            { key: 'pending', label: <>待处理</> },
+            { key: 'picking', label: <>拣配中</> },
+            { key: 'shipped', label: <>已发货</> },
+          ]}
+        />
+
+        {/* 统计卡片 */}
+        <Row gutter={16} style={{ marginBottom: 16 }}>
+          <Col span={6}>
+            <Card size="small">
+              <Statistic title="交货总数" value={stats.total} suffix="单" valueStyle={{ fontSize: 18 }} />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card size="small">
+              <Statistic title="待拣配" value={stats.pendingPicking} suffix="单" valueStyle={{ fontSize: 18, color: '#faad14' }} />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card size="small">
+              <Statistic title="待发货过账" value={stats.pendingGi} suffix="单" valueStyle={{ fontSize: 18, color: '#1890ff' }} />
+            </Card>
+          </Col>
+          <Col span={6}>
+            <Card size="small">
+              <Statistic title="已完成" value={stats.completed} suffix="单" valueStyle={{ fontSize: 18, color: '#52c41a' }} />
+            </Card>
+          </Col>
+        </Row>
+
+        {/* 搜索表单 */}
+        <Form form={form} layout="inline" style={{ marginBottom: 16 }}>
+          <Form.Item name="deliveryNumber" label="交货单号">
+            <Input placeholder="交货单号" style={{ width: 140 }} />
+          </Form.Item>
+          <Form.Item name="customerName" label="客户">
+            <Input placeholder="客户名称" style={{ width: 130 }} />
+          </Form.Item>
+          <Form.Item name="deliveryType" label="交货类型">
+            <Select placeholder="全部" allowClear style={{ width: 140 }}
+              options={Object.entries(deliveryTypeConfig).map(([k, v]) => ({ value: k, label: `${k} - ${v.text}` }))} />
+          </Form.Item>
+          <Form.Item name="dateRange" label="日期">
+            <RangePicker style={{ width: 240 }} />
+          </Form.Item>
+          <Form.Item name="pickingStatus" label="拣配">
+            <Select placeholder="全部" allowClear style={{ width: 110 }}
+              options={Object.entries(pickingStatusConfig).map(([k, v]) => ({ value: k, label: v.text }))} />
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" icon={<SearchOutlined />}>查询</Button>
+          </Form.Item>
+        </Form>
+
+        {/* 交货表格 */}
+        <Table
+          columns={columns}
+          dataSource={filteredDeliveries}
+          rowKey="id"
+          loading={loading}
+          size="small"
+          scroll={{ x: 1500 }}
+          pagination={{ defaultPageSize: 20, showSizeChanger: true }}
+        />
+      </Card>
+
+      {/* 新建交货单弹窗 */}
+      <Modal
+        title="新建交货单"
+        open={createModalVisible}
+        onCancel={() => setCreateModalVisible(false)}
+        onOk={() => { message.success('交货单创建成功'); setCreateModalVisible(false); }}
+        width={900}
+      >
+        <Form layout="vertical">
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item label="交货类型" required>
+                <Select placeholder="选择交货类型" options={Object.entries(deliveryTypeConfig).map(([k, v]) => ({ value: k, label: `${k} - ${v.text}` }))} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="来源订单">
+                <Select placeholder="选择销售订单（可选）" showSearch optionFilterProp="label"
+                  options={mockSalesOrders.map(o => ({ value: o.orderNo, label: `${o.orderNo} - ${o.customerName}` }))} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="装运点" required>
+                <Select placeholder="选择装运点" options={shippingPoints} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item label="单据日期" required>
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="计划发货日期" required>
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="客户">
+                <Input placeholder="客户自动带出" disabled />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Card title="交货行项目" size="small">
+            <Table
+              columns={[
+                { title: '物料编码', dataIndex: 'materialCode', width: 110 },
+                { title: '物料描述', dataIndex: 'materialName', width: 140 },
+                { title: '订单数量', dataIndex: 'orderQty', width: 90 },
+                { title: '交货数量', dataIndex: 'deliveryQty', width: 90,
+                  render: () => <InputNumber size="small" min={0} style={{ width: 80 }} />,
+                },
+                { title: '单位', dataIndex: 'unit', width: 60 },
+                { title: '批次', dataIndex: 'batch', width: 120,
+                  render: () => <Input size="small" placeholder="批次号" />,
+                },
+                { title: '操作', width: 60, render: () => <Button type="link" size="small" danger>删除</Button> },
+              ]}
+              dataSource={[]}
+              size="small"
+              pagination={false}
+              locale={{ emptyText: '请先选择销售订单或手动添加物料' }}
+            />
+            <Button type="dashed" block style={{ marginTop: 16 }} icon={<PlusOutlined />}>
+              添加物料
+            </Button>
+          </Card>
+        </Form>
+      </Modal>
+
+      {/* 交货详情弹窗 */}
+      <Modal
+        title={`交货单详情 - ${selectedDelivery?.deliveryNumber}`}
+        open={detailModalVisible}
+        onCancel={() => { setDetailModalVisible(false); setSelectedDelivery(null); }}
+        footer={[
+          <Button key="print">打印交货单</Button>,
+          <Button key="close" type="primary" onClick={() => { setDetailModalVisible(false); setSelectedDelivery(null); }}>关闭</Button>,
+        ]}
+        width={1000}
+      >
+        {selectedDelivery && (
+          <>
+            {/* 流程步骤 */}
+            <Card size="small" style={{ marginBottom: 16 }}>
+              <Steps
+                size="small"
+                current={deliveryStatusConfig[selectedDelivery.deliveryStatus]?.step || 0}
+                items={[
+                  { title: '创建', description: selectedDelivery.createdAt },
+                  { title: '拣配', status: selectedDelivery.pickingStatus === 'C' ? 'finish' : selectedDelivery.pickingStatus === 'B' ? 'process' : 'wait' },
+                  { title: '发货', status: selectedDelivery.giStatus === 'B' ? 'finish' : 'wait' },
+                  { title: '完成', status: selectedDelivery.deliveryStatus === '04' ? 'finish' : 'wait' },
+                ]}
+              />
+            </Card>
+
+            <Row gutter={16} style={{ marginBottom: 16 }}>
+              <Col span={16}>
+                <Descriptions bordered size="small" column={2}>
+                  <Descriptions.Item label="交货单号">{selectedDelivery.deliveryNumber}</Descriptions.Item>
+                  <Descriptions.Item label="交货类型">
+                    <Tag color={deliveryTypeConfig[selectedDelivery.deliveryType]?.color}>
+                      {selectedDelivery.deliveryType} - {deliveryTypeConfig[selectedDelivery.deliveryType]?.text}
+                    </Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="客户">{selectedDelivery.customerName}</Descriptions.Item>
+                  <Descriptions.Item label="来源订单">{selectedDelivery.salesOrder || '无'}</Descriptions.Item>
+                  <Descriptions.Item label="单据日期">{selectedDelivery.documentDate}</Descriptions.Item>
+                  <Descriptions.Item label="计划发货日">{selectedDelivery.plannedGiDate}</Descriptions.Item>
+                  <Descriptions.Item label="实际发货日">{selectedDelivery.actualGiDate || '-'}</Descriptions.Item>
+                  <Descriptions.Item label="装运点">{selectedDelivery.shippingPoint}</Descriptions.Item>
+                  <Descriptions.Item label="总重量">{`${selectedDelivery.totalWeight} ${selectedDelivery.weightUnit}`}</Descriptions.Item>
+                  <Descriptions.Item label="创建人">{selectedDelivery.createdBy}</Descriptions.Item>
+                </Descriptions>
+              </Col>
+              <Col span={8}>
+                <Card size="small" style={{ background: '#f6f8fa', height: '100%' }}>
+                  <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                    <div>
+                      <span style={{ color: '#8c8c8c', fontSize: 12 }}>拣配状态</span><br />
+                      <Tag color={pickingStatusConfig[selectedDelivery.pickingStatus]?.color} style={{ marginTop: 4 }}>
+                        {pickingStatusConfig[selectedDelivery.pickingStatus]?.text}
+                      </Tag>
+                    </div>
+                    <div>
+                      <span style={{ color: '#8c8c8c', fontSize: 12 }}>发货过账</span><br />
+                      <Tag color={giStatusConfig[selectedDelivery.giStatus]?.color} style={{ marginTop: 4 }}>
+                        {giStatusConfig[selectedDelivery.giStatus]?.text}
+                      </Tag>
+                    </div>
+                    <div>
+                      <span style={{ color: '#8c8c8c', fontSize: 12 }}>交货状态</span><br />
+                      <Tag color={deliveryStatusConfig[selectedDelivery.deliveryStatus]?.color} style={{ marginTop: 4 }}>
+                        {deliveryStatusConfig[selectedDelivery.deliveryStatus]?.text}
+                      </Tag>
+                    </div>
+                  </Space>
+                </Card>
+              </Col>
+            </Row>
+
+            {/* 交货明细 */}
+            <Card title="交货行项目" size="small">
+              <Table
+                columns={[
+                  { title: '物料编码', dataIndex: 'materialCode', width: 110 },
+                  { title: '物料描述', dataIndex: 'materialName', width: 150 },
+                  { title: '订单数量', dataIndex: 'orderQty', width: 100, align: 'right' as const,
+                    render: (v: number, r: typeof selectedDelivery.items[0]) => `${v} ${r.unit}`,
+                  },
+                  { title: '已交数量', dataIndex: 'deliveredQty', width: 100, align: 'right' as const,
+                    render: (v: number, r: typeof selectedDelivery.items[0]) => `${v} ${r.unit}`,
+                  },
+                  { title: '批次', dataIndex: 'batch', width: 120, render: (v: string) => v || '-' },
+                  {
+                    title: '状态', width: 80,
+                    render: (_: unknown, r: typeof selectedDelivery.items[0]) => {
+                      if (r.deliveredQty === 0) return <Tag color="default">未拣配</Tag>;
+                      if (r.deliveredQty < r.orderQty) return <Tag color="processing">部分拣配</Tag>;
+                      return <Tag color="green">完全拣配</Tag>;
+                    },
+                  },
+                ]}
+                dataSource={selectedDelivery.items}
+                rowKey="materialCode"
+                size="small"
+                pagination={false}
+                summary={(data) => {
+                  const totalWeight = selectedDelivery.totalWeight;
+                  return (
+                    <Table.Summary.Row>
+                      <Table.Summary.Cell index={0} colSpan={3} align="right"><strong>总重量:</strong></Table.Summary.Cell>
+                      <Table.Summary.Cell index={1} colSpan={3}>
+                        <strong style={{ color: '#1890ff' }}>{totalWeight} {selectedDelivery.weightUnit}</strong>
+                      </Table.Summary.Cell>
+                    </Table.Summary.Row>
+                  );
+                }}
+              />
+            </Card>
+          </>
+        )}
+      </Modal>
+    </div>
+  );
+}
