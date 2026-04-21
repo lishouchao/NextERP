@@ -23,4 +23,13 @@ public interface MmPurchaseOrderHdrRepository extends TenantAwareRepository<MmPu
      * @return 采购订单分页
      */
     Page<MmPurchaseOrderHdr> findByTenantIdAndStatusAndIsDeletedFalse(Long tenantId, String status, Pageable pageable);
+
+    /**
+     * 分页查询采购订单 (按租户)
+     *
+     * @param tenantId 租户ID
+     * @param pageable 分页
+     * @return 采购订单分页
+     */
+    Page<MmPurchaseOrderHdr> findByTenantIdAndIsDeletedFalse(Long tenantId, Pageable pageable);
 }

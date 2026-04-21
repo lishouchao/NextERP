@@ -66,7 +66,7 @@ public class MmInventoryController {
         if (materialId != null) {
             List<StockDTO> list = inventoryService.listStockByMaterial(materialId, tenantId);
             PageResult<StockDTO> result = PageResult.<StockDTO>builder()
-                    .records(list).total(list.size()).current(1).size(list.size()).build();
+                    .records(list).total((long) list.size()).current(1).size(list.size()).build();
             return Result.success(result);
         }
         return Result.success(PageResult.<StockDTO>builder()

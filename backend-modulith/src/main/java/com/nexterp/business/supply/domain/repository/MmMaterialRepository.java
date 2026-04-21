@@ -47,6 +47,15 @@ public interface MmMaterialRepository extends TenantAwareRepository<MmMaterial> 
     Page<MmMaterial> findByTenantIdAndMaterialTypeAndIsDeletedFalse(Long tenantId, String materialType, Pageable pageable);
 
     /**
+     * 分页查询物料 (按租户)
+     *
+     * @param tenantId 租户ID
+     * @param pageable 分页
+     * @return 物料分页
+     */
+    Page<MmMaterial> findByTenantIdAndIsDeletedFalse(Long tenantId, Pageable pageable);
+
+    /**
      * 搜索物料
      *
      * @param tenantId 租户ID
