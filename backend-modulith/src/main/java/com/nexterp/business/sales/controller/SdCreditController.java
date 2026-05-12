@@ -1,5 +1,10 @@
 package com.nexterp.business.sales.controller;
 
+import com.nexterp.business.sales.application.service.SdCreditService;
+import com.nexterp.business.sales.domain.model.SdCreditCheckLog;
+import com.nexterp.business.sales.dto.CreditCheckRequest;
+import com.nexterp.business.sales.dto.CreditCheckResult;
+import com.nexterp.business.sales.dto.CreditMasterDTO;
 import com.nexterp.shared.core.result.PageResult;
 import com.nexterp.shared.core.result.Result;
 import jakarta.validation.Valid;
@@ -8,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +28,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SdCreditController {
 
+    private final SdCreditService creditService;
+
     /**
      * 获取客户信用主数据
      *
@@ -32,31 +39,32 @@ public class SdCreditController {
      */
     @GetMapping("/{customerId}")
     @PreAuthorize("hasAuthority('sd:credit:view')")
-    public Result<Map<String, Object>> getCreditMaster(
+    public Result<CreditMasterDTO> getCreditMaster(
             @PathVariable Long customerId,
             @RequestParam Long companyId) {
         log.info("获取客户信用主数据, customerId={}, companyId={}", customerId, companyId);
-        // TODO: 调用信用管理服务
-        return Result.success(Map.of("customerId", customerId, "companyId", companyId));
+        return Result.success(creditService.getCreditMaster(customerId, companyId));
     }
 
     /**
      * 更新客户信用主数据
      *
-     * @param customerId 客户ID
-     * @param companyId  公司ID
-     * @param params     信用主数据参数
-     * @return 更新后的信用主数据
+     * @param customerId  客户ID
+     * @param companyId   公司ID
+     * @param creditLimit 信用额度
+     * @param riskClass   风险类别
+     * @return 成功
      */
     @PutMapping("/{customerId}")
     @PreAuthorize("hasAuthority('sd:credit:edit')")
-    public Result<Map<String, Object>> updateCreditMaster(
+    public Result<Void> updateCreditMaster(
             @PathVariable Long customerId,
             @RequestParam Long companyId,
-            @RequestBody Map<String, Object> params) {
-        log.info("更新客户信用主数据, customerId={}, companyId={}", customerId, companyId);
-        // TODO: 调用信用管理服务
-        return Result.success(Map.of("customerId", customerId, "companyId", companyId));
+            @RequestParam(required = false) BigDecimal creditLimit,
+            @RequestParam(required = false) String riskClass) {
+        log.info("更新客户信用主数据, customerId={}, companyId={}, creditLimit={}, riskClass={}", customerId, companyId, creditLimit, riskClass);
+        creditService.updateCreditMaster(customerId, companyId, creditLimit, riskClass);
+        return Result.success();
     }
 
     /**
@@ -67,10 +75,9 @@ public class SdCreditController {
      */
     @PostMapping("/check")
     @PreAuthorize("hasAuthority('sd:credit:check')")
-    public Result<Map<String, Object>> performCreditCheck(@Valid @RequestBody Map<String, Object> request) {
+    public Result<CreditCheckResult> performCreditCheck(@Valid @RequestBody CreditCheckRequest request) {
         log.info("执行信用检查");
-        // TODO: 调用信用检查服务
-        return Result.success(Map.of("creditStatus", "PASSED"));
+        return Result.success(creditService.performCreditCheck(request));
     }
 
     /**
@@ -84,20 +91,13 @@ public class SdCreditController {
      */
     @GetMapping("/logs")
     @PreAuthorize("hasAuthority('sd:credit:view')")
-    public Result<PageResult<Map<String, Object>>> getCreditLogs(
+    public Result<PageResult<SdCreditCheckLog>> getCreditLogs(
             @RequestParam Long tenantId,
             @RequestParam(required = false) Long customerId,
             @RequestParam(defaultValue = "1") int current,
             @RequestParam(defaultValue = "10") int size) {
         log.info("查询信用检查日志, tenantId={}, customerId={}, current={}, size={}", tenantId, customerId, current, size);
-        // TODO: 调用信用管理服务
-        PageResult<Map<String, Object>> pageResult = PageResult.<Map<String, Object>>builder()
-                .records(Collections.emptyList())
-                .total(0L)
-                .current(current)
-                .size(size)
-                .build();
-        return Result.success(pageResult);
+        return Result.success(creditService.getCreditLogs(tenantId, customerId, current, size));
     }
 
     /**
@@ -110,8 +110,7 @@ public class SdCreditController {
     @PreAuthorize("hasAuthority('sd:credit:view')")
     public Result<List<Map<String, Object>>> getBlockedOrders(@RequestParam Long tenantId) {
         log.info("查询被冻结的订单, tenantId={}", tenantId);
-        // TODO: 调用信用管理服务
-        return Result.success(List.of());
+        return Result.success(creditService.getBlockedOrders(tenantId));
     }
 
     /**
@@ -127,7 +126,7 @@ public class SdCreditController {
             @PathVariable Long orderId,
             @RequestParam String releasedBy) {
         log.info("释放被冻结的订单, orderId={}, releasedBy={}", orderId, releasedBy);
-        // TODO: 调用信用管理服务
+        creditService.releaseBlockedOrder(orderId, releasedBy);
         return Result.success();
     }
 }

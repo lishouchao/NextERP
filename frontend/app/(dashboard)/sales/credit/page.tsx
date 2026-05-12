@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Table,
@@ -40,6 +40,11 @@ import {
   LockOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { creditApi } from '@/lib/api/sales';
+
+// 默认租户ID
+const DEFAULT_TENANT_ID = 1;
+const DEFAULT_COMPANY_ID = 1;
 
 // 风险等级配置
 const riskClassConfig: Record<string, { text: string; color: string }> = {
@@ -55,147 +60,37 @@ const creditStatusConfig: Record<string, { text: string; color: string }> = {
   '03': { text: '冻结', color: 'red' },
 };
 
-// 模拟信用主数据
-const mockCreditMasters = [
-  {
-    id: 1,
-    customerCode: 'CUST-001',
-    customerName: '北京科技有限公司',
-    contactPerson: '李总',
-    creditLimit: 500000.00,
-    usedLimit: 266000.00,
-    openOrders: 125000.00,
-    openDeliveries: 80000.00,
-    openInvoices: 61000.00,
-    overdueReceivables: 0.00,
-    riskClass: '1',
-    creditStatus: '01',
-    paymentTerms: 'ZT01 - 30天净额',
-    lastCreditCheck: '2024-01-25 09:00:00',
-    createdAt: '2023-06-01',
-    checkHistory: [
-      { id: 1, checkDate: '2024-01-25 09:00:00', orderNo: 'SO-2023-005', checkResult: '通过', usedRate: 53.2, checkedBy: '信用管理员A' },
-      { id: 2, checkDate: '2024-01-20 14:30:00', orderNo: 'SO-2023-004', checkResult: '通过', usedRate: 45.0, checkedBy: '信用管理员A' },
-      { id: 3, checkDate: '2024-01-15 10:00:00', orderNo: 'SO-2023-001', checkResult: '通过', usedRate: 38.5, checkedBy: '信用管理员A' },
-    ],
-  },
-  {
-    id: 2,
-    customerCode: 'CUST-002',
-    customerName: '上海贸易集团',
-    contactPerson: '王总',
-    creditLimit: 800000.00,
-    usedLimit: 720000.00,
-    openOrders: 256000.00,
-    openDeliveries: 289280.00,
-    openInvoices: 174720.00,
-    overdueReceivables: 120000.00,
-    riskClass: '2',
-    creditStatus: '02',
-    paymentTerms: 'ZT02 - 60天净额',
-    lastCreditCheck: '2024-01-26 11:30:00',
-    createdAt: '2023-03-15',
-    checkHistory: [
-      { id: 1, checkDate: '2024-01-26 11:30:00', orderNo: 'SO-2023-007', checkResult: '预警', usedRate: 90.0, checkedBy: '信用管理员B' },
-      { id: 2, checkDate: '2024-01-22 09:15:00', orderNo: 'SO-2023-006', checkResult: '通过', usedRate: 82.5, checkedBy: '信用管理员B' },
-      { id: 3, checkDate: '2024-01-18 16:45:00', orderNo: 'SO-2023-002', checkResult: '预警', usedRate: 75.0, checkedBy: '信用管理员A' },
-    ],
-  },
-  {
-    id: 3,
-    customerCode: 'CUST-003',
-    customerName: '广州制造企业',
-    contactPerson: '张总',
-    creditLimit: 300000.00,
-    usedLimit: 285000.00,
-    openOrders: 88000.00,
-    openDeliveries: 56000.00,
-    openInvoices: 99440.00,
-    overdueReceivables: 41560.00,
-    riskClass: '3',
-    creditStatus: '03',
-    paymentTerms: 'ZT03 - 45天净额',
-    lastCreditCheck: '2024-01-27 08:00:00',
-    createdAt: '2023-09-01',
-    checkHistory: [
-      { id: 1, checkDate: '2024-01-27 08:00:00', orderNo: 'SO-2023-008', checkResult: '冻结', usedRate: 95.0, checkedBy: '信用管理员A' },
-      { id: 2, checkDate: '2024-01-25 10:30:00', orderNo: 'SO-2023-003', checkResult: '预警', usedRate: 88.0, checkedBy: '信用管理员A' },
-      { id: 3, checkDate: '2024-01-20 14:00:00', orderNo: 'SO-2023-003', checkResult: '预警', usedRate: 80.0, checkedBy: '信用管理员B' },
-      { id: 4, checkDate: '2024-01-15 09:00:00', orderNo: 'SO-2023-003', checkResult: '通过', usedRate: 65.0, checkedBy: '信用管理员A' },
-    ],
-  },
-  {
-    id: 4,
-    customerCode: 'CUST-004',
-    customerName: '深圳电子公司',
-    contactPerson: '陈总',
-    creditLimit: 600000.00,
-    usedLimit: 395200.00,
-    openOrders: 380000.00,
-    openDeliveries: 0.00,
-    openInvoices: 429400.00,
-    overdueReceivables: 0.00,
-    riskClass: '1',
-    creditStatus: '01',
-    paymentTerms: 'ZT02 - 60天净额',
-    lastCreditCheck: '2024-01-24 15:00:00',
-    createdAt: '2023-07-20',
-    checkHistory: [
-      { id: 1, checkDate: '2024-01-24 15:00:00', orderNo: 'SO-2023-005', checkResult: '通过', usedRate: 65.9, checkedBy: '信用管理员B' },
-      { id: 2, checkDate: '2024-01-20 09:00:00', orderNo: 'SO-2023-005', checkResult: '通过', usedRate: 58.0, checkedBy: '信用管理员B' },
-    ],
-  },
-  {
-    id: 5,
-    customerCode: 'CUST-005',
-    customerName: '杭州网络科技',
-    contactPerson: '赵总',
-    creditLimit: 200000.00,
-    usedLimit: 186000.00,
-    openOrders: 0.00,
-    openDeliveries: 21018.00,
-    openInvoices: 21018.00,
-    overdueReceivables: 144964.00,
-    riskClass: '2',
-    creditStatus: '02',
-    paymentTerms: 'ZT01 - 30天净额',
-    lastCreditCheck: '2024-01-26 10:00:00',
-    createdAt: '2023-11-01',
-    checkHistory: [
-      { id: 1, checkDate: '2024-01-26 10:00:00', orderNo: 'DN-2024-003', checkResult: '预警', usedRate: 93.0, checkedBy: '信用管理员A' },
-      { id: 2, checkDate: '2024-01-22 14:30:00', orderNo: 'SO-2023-006', checkResult: '通过', usedRate: 85.0, checkedBy: '信用管理员A' },
-    ],
-  },
-  {
-    id: 6,
-    customerCode: 'CUST-006',
-    customerName: '成都智能制造有限公司',
-    contactPerson: '刘总',
-    creditLimit: 450000.00,
-    usedLimit: 67500.00,
-    openOrders: 67500.00,
-    openDeliveries: 0.00,
-    openInvoices: 0.00,
-    overdueReceivables: 0.00,
-    riskClass: '1',
-    creditStatus: '01',
-    paymentTerms: 'ZT01 - 30天净额',
-    lastCreditCheck: '2024-01-20 09:30:00',
-    createdAt: '2024-01-10',
-    checkHistory: [
-      { id: 1, checkDate: '2024-01-20 09:30:00', orderNo: 'SO-2024-001', checkResult: '通过', usedRate: 15.0, checkedBy: '信用管理员B' },
-    ],
-  },
-];
-
 export default function CreditPage() {
   const [loading, setLoading] = useState(false);
-  const [creditMasters, setCreditMasters] = useState(mockCreditMasters);
+  const [creditMasters, setCreditMasters] = useState<any[]>([]);
+  const [creditLogs, setCreditLogs] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('overview');
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [updateLimitModalVisible, setUpdateLimitModalVisible] = useState(false);
-  const [selectedCredit, setSelectedCredit] = useState<typeof mockCreditMasters[0] | null>(null);
+  const [selectedCredit, setSelectedCredit] = useState<any | null>(null);
   const [form] = Form.useForm();
+
+  // 加载信用主数据
+  const fetchCreditData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [logsRes] = await Promise.all([
+        creditApi.getCreditLogs({ tenantId: DEFAULT_TENANT_ID, current: 1, size: 100 }),
+      ]);
+      if (logsRes.data) {
+        setCreditLogs(logsRes.data.records || []);
+      }
+    } catch (error) {
+      console.error('获取信用数据失败:', error);
+      message.error('获取信用数据失败');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCreditData();
+  }, [fetchCreditData]);
 
   // 统计
   const stats = {
@@ -231,7 +126,7 @@ export default function CreditPage() {
       dataIndex: 'customerName',
       key: 'customerName',
       width: 170,
-      render: (text: string, record: typeof mockCreditMasters[0]) => (
+      render: (text: string, record: any) => (
         <a onClick={() => { setSelectedCredit(record); setDetailModalVisible(true); }}>{text}</a>
       ),
     },
@@ -259,7 +154,7 @@ export default function CreditPage() {
       key: 'availableLimit',
       width: 130,
       align: 'right' as const,
-      render: (_: unknown, record: typeof mockCreditMasters[0]) => {
+      render: (_: unknown, record: any) => {
         const available = record.creditLimit - record.usedLimit;
         return <span style={{ color: available > 0 ? '#52c41a' : '#ff4d4f' }}>¥{available.toLocaleString()}</span>;
       },
@@ -268,7 +163,7 @@ export default function CreditPage() {
       title: '使用率',
       key: 'usageRate',
       width: 160,
-      render: (_: unknown, record: typeof mockCreditMasters[0]) => {
+      render: (_: unknown, record: any) => {
         const rate = parseFloat(getUsageRate(record.usedLimit, record.creditLimit));
         return <Progress percent={rate} size="small" strokeColor={getProgressColor(rate)} format={(p) => `${p}%`} />;
       },
@@ -309,7 +204,7 @@ export default function CreditPage() {
       key: 'action',
       width: 250,
       fixed: 'right' as const,
-      render: (_: unknown, record: typeof mockCreditMasters[0]) => (
+      render: (_: unknown, record: any) => (
         <Space size="small">
           <Button type="link" size="small" onClick={() => { setSelectedCredit(record); setDetailModalVisible(true); }}>
             详情
@@ -356,9 +251,11 @@ export default function CreditPage() {
   ];
 
   // 所有检查历史
-  const allCheckHistory = creditMasters.flatMap(cm =>
-    cm.checkHistory.map(ch => ({ ...ch, customerName: cm.customerName, customerCode: cm.customerCode }))
-  ).sort((a, b) => dayjs(b.checkDate).unix() - dayjs(a.checkDate).unix());
+  const allCheckHistory = creditLogs.map(log => ({
+    ...log,
+    customerName: log.customerName || '',
+    customerCode: log.customerCode || '',
+  })).sort((a: any, b: any) => dayjs(b.checkDate || b.createdAt).unix() - dayjs(a.checkDate || a.createdAt).unix());
 
   return (
     <div style={{ padding: 24 }}>
@@ -366,7 +263,7 @@ export default function CreditPage() {
         title="信用管理 (对标 SAP FD32/FD33)"
         extra={
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => setLoading(!loading)}>刷新</Button>
+            <Button icon={<ReloadOutlined />} onClick={fetchCreditData}>刷新</Button>
             <Button icon={<AuditOutlined />} onClick={() => message.info('批量信用检查已触发')}>
               批量信用检查
             </Button>
@@ -534,7 +431,25 @@ export default function CreditPage() {
         title={`调整信用额度 - ${selectedCredit?.customerName}`}
         open={updateLimitModalVisible}
         onCancel={() => { setUpdateLimitModalVisible(false); setSelectedCredit(null); }}
-        onOk={() => { message.success('信用额度已更新'); setUpdateLimitModalVisible(false); setSelectedCredit(null); }}
+        onOk={async () => {
+          if (selectedCredit) {
+            try {
+              const newLimit = form.getFieldValue('creditLimit') || selectedCredit.creditLimit;
+              const newRiskClass = form.getFieldValue('riskClass') || selectedCredit.riskClass;
+              await creditApi.updateCreditMaster(selectedCredit.customerId || selectedCredit.id, {
+                companyId: DEFAULT_COMPANY_ID,
+                creditLimit: newLimit,
+                riskClass: newRiskClass,
+              });
+              message.success('信用额度已更新');
+              setUpdateLimitModalVisible(false);
+              setSelectedCredit(null);
+              fetchCreditData();
+            } catch (error) {
+              message.error('更新信用额度失败');
+            }
+          }
+        }}
         width={500}
       >
         {selectedCredit && (
@@ -583,12 +498,28 @@ export default function CreditPage() {
             调整额度
           </Button>,
           <Button key="check" icon={<AuditOutlined />} type="primary"
-            onClick={() => { message.success('信用检查已执行'); }}>
+            onClick={async () => {
+              if (selectedCredit) {
+                try {
+                  await creditApi.performCreditCheck({ customerId: selectedCredit.customerId || selectedCredit.id, companyId: DEFAULT_COMPANY_ID, tenantId: DEFAULT_TENANT_ID });
+                  message.success('信用检查已执行');
+                  fetchCreditData();
+                } catch (error) { message.error('信用检查失败'); }
+              }
+            }}>
             执行信用检查
           </Button>,
           selectedCredit?.creditStatus === '03' ? (
             <Button key="release" icon={<UnlockOutlined />} style={{ background: '#faad14', borderColor: '#faad14', color: '#fff' }}
-              onClick={() => { message.success('冻结订单已释放'); }}>
+              onClick={async () => {
+                if (selectedCredit) {
+                  try {
+                    await creditApi.releaseBlockedOrder(selectedCredit.customerId || selectedCredit.id, 'admin');
+                    message.success('冻结订单已释放');
+                    fetchCreditData();
+                  } catch (error) { message.error('释放冻结订单失败'); }
+                }
+              }}>
               释放冻结订单
             </Button>
           ) : null,
@@ -715,7 +646,7 @@ export default function CreditPage() {
             <Card title="信用检查历史" size="small">
               <Table
                 columns={checkHistoryColumns}
-                dataSource={selectedCredit.checkHistory}
+                dataSource={selectedCredit.checkHistory || []}
                 rowKey="id"
                 size="small"
                 pagination={false}

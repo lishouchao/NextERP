@@ -22,21 +22,11 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons';
 import type { Department } from '@/types/hr';
-
-// 模拟数据
-const mockDepartments: Department[] = [
-  { id: 1, deptName: '总公司', deptCode: 'HQ', parentId: null, sort: 1, status: 1, remark: '总部' },
-  { id: 2, deptName: '技术部', deptCode: 'TECH', parentId: 1, sort: 1, status: 1, remark: '技术研发' },
-  { id: 3, deptName: '产品部', deptCode: 'PROD', parentId: 1, sort: 2, status: 1, remark: '产品管理' },
-  { id: 4, deptName: '人力资源部', deptCode: 'HR', parentId: 1, sort: 3, status: 1, remark: '人力资源管理' },
-  { id: 5, deptName: '财务部', deptCode: 'FIN', parentId: 1, sort: 4, status: 1, remark: '财务管理' },
-  { id: 6, deptName: '前端组', deptCode: 'FE', parentId: 2, sort: 1, status: 1, remark: '前端开发' },
-  { id: 7, deptName: '后端组', deptCode: 'BE', parentId: 2, sort: 2, status: 1, remark: '后端开发' },
-];
+import { departmentApi } from '@/lib/api/hr';
 
 export default function DepartmentsPage() {
   const [loading, setLoading] = useState(false);
-  const [departments, setDepartments] = useState<Department[]>(mockDepartments);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingDept, setEditingDept] = useState<Department | null>(null);
   const [form] = Form.useForm();
@@ -44,11 +34,15 @@ export default function DepartmentsPage() {
   // 加载部门数据
   const loadDepartments = async () => {
     setLoading(true);
-    // 模拟 API 调用
-    setTimeout(() => {
-      setDepartments(mockDepartments);
+    try {
+      const res = await departmentApi.getList();
+      const pageData = res.data;
+      setDepartments(pageData?.records || res.data || []);
+    } catch (err) {
+      message.error('加载部门数据失败');
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   useEffect(() => {
@@ -85,48 +79,47 @@ export default function DepartmentsPage() {
       const values = await form.validateFields();
       setLoading(true);
 
-      // 模拟 API 调用
-      setTimeout(() => {
-        if (editingDept) {
-          // 更新
-          setDepartments(prev =>
-            prev.map(d => (d.id === editingDept.id ? { ...d, ...values } : d))
-          );
-          message.success('更新部门成功');
-        } else {
-          // 新增
-          const newDept: Department = {
-            id: Math.max(...departments.map(d => d.id)) + 1,
-            ...values,
-            status: 1,
-          };
-          setDepartments(prev => [...prev, newDept]);
-          message.success('创建部门成功');
-        }
-        handleCloseModal();
-        setLoading(false);
-      }, 500);
-    } catch (error) {
-      console.error(error);
+      if (editingDept) {
+        await departmentApi.update(editingDept.id, values);
+        message.success('更新部门成功');
+      } else {
+        await departmentApi.create({ ...values, status: 1 });
+        message.success('创建部门成功');
+      }
+      handleCloseModal();
+      loadDepartments();
+    } catch (error: any) {
+      if (error?.response?.data?.message) {
+        message.error(error.response.data.message);
+      } else if (error?.message) {
+        // form validation error, ignore
+      } else {
+        message.error('操作失败');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   // 删除部门
-  const handleDelete = (id: number) => {
-    setLoading(true);
+  const handleDelete = async (id: number) => {
     // 检查是否有子部门
     const hasChildren = departments.some(d => d.parentId === id);
     if (hasChildren) {
       message.error('该部门下有子部门，无法删除');
-      setLoading(false);
       return;
     }
 
-    setTimeout(() => {
-      setDepartments(prev => prev.filter(d => d.id !== id));
+    setLoading(true);
+    try {
+      await departmentApi.delete(id);
       message.success('删除部门成功');
+      loadDepartments();
+    } catch (err) {
+      message.error('删除部门失败');
+    } finally {
       setLoading(false);
-    }, 300);
+    }
   };
 
   // 将扁平数据转换为树形结构

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Table,
@@ -35,205 +35,13 @@ import {
   TagOutlined,
   DatabaseOutlined,
 } from '@ant-design/icons';
+import { materialApi } from '@/lib/api/supply';
+import type { MaterialDTO } from '@/lib/api/supply';
 
 // ============================================================
 // Types
 // ============================================================
-interface Material {
-  id: number;
-  materialNumber: string;
-  materialType: string;
-  materialGroup: string;
-  description: string;
-  baseUom: string;
-  crossPlantStatus: string;
-  industrySector: string;
-  validFrom: string;
-  validTo: string;
-  // Plant data
-  plant?: string;
-  mrpType?: string;
-  procurementType?: string;
-  lotSize?: string;
-  reorderPoint?: number;
-  // Sales data
-  salesOrg?: string;
-  distrChannel?: string;
-  division?: string;
-  // Valuation
-  valuationClass?: string;
-  priceUnit?: number;
-  standardPrice?: number;
-  movingPrice?: number;
-}
-
-// ============================================================
-// Mock Data - 8 materials covering all types
-// ============================================================
-const mockMaterials: Material[] = [
-  {
-    id: 1,
-    materialNumber: 'MAT-001',
-    materialType: 'ROH',
-    materialGroup: '01-原材料',
-    description: '冷轧钢板 SPCC 1.0mm',
-    baseUom: 'KG',
-    crossPlantStatus: '活跃',
-    industrySector: '机械工程',
-    validFrom: '2024-01-01',
-    validTo: '2029-12-31',
-    plant: '1000',
-    mrpType: 'VB',
-    procurementType: 'E',
-    lotSize: 'EX',
-    reorderPoint: 500,
-    salesOrg: '1000',
-    distrChannel: '10',
-    division: '00',
-    valuationClass: '3000',
-    priceUnit: 1,
-    standardPrice: 8.50,
-    movingPrice: 8.75,
-  },
-  {
-    id: 2,
-    materialNumber: 'MAT-002',
-    materialType: 'ROH',
-    materialGroup: '01-原材料',
-    description: '铝合金型材 6063-T5',
-    baseUom: 'KG',
-    crossPlantStatus: '活跃',
-    industrySector: '机械工程',
-    validFrom: '2024-01-15',
-    validTo: '2029-12-31',
-    plant: '1000',
-    mrpType: 'VB',
-    procurementType: 'F',
-    lotSize: 'FX',
-    reorderPoint: 300,
-    valuationClass: '3000',
-    priceUnit: 1,
-    standardPrice: 22.0,
-    movingPrice: 23.5,
-  },
-  {
-    id: 3,
-    materialNumber: 'MAT-003',
-    materialType: 'HALB',
-    materialGroup: '02-半成品',
-    description: '冲压外壳组件 A-200',
-    baseUom: 'PCS',
-    crossPlantStatus: '活跃',
-    industrySector: '机械工程',
-    validFrom: '2024-03-01',
-    validTo: '2029-12-31',
-    plant: '1000',
-    mrpType: 'PD',
-    procurementType: 'E',
-    lotSize: 'EX',
-    reorderPoint: 100,
-    salesOrg: '1000',
-    distrChannel: '10',
-    division: '00',
-    valuationClass: '7900',
-    priceUnit: 1,
-    standardPrice: 45.0,
-    movingPrice: 47.2,
-  },
-  {
-    id: 4,
-    materialNumber: 'MAT-004',
-    materialType: 'FERT',
-    materialGroup: '03-成品',
-    description: '智能控制器 SC-100 Pro',
-    baseUom: 'PCS',
-    crossPlantStatus: '活跃',
-    industrySector: '电子',
-    validFrom: '2024-02-01',
-    validTo: '2029-12-31',
-    plant: '1000',
-    mrpType: 'PD',
-    procurementType: 'E',
-    lotSize: 'EX',
-    reorderPoint: 50,
-    salesOrg: '1000',
-    distrChannel: '10',
-    division: '00',
-    valuationClass: '7920',
-    priceUnit: 1,
-    standardPrice: 280.0,
-    movingPrice: 295.0,
-  },
-  {
-    id: 5,
-    materialNumber: 'MAT-005',
-    materialType: 'FERT',
-    materialGroup: '03-成品',
-    description: '工业传感器 IS-500',
-    baseUom: 'PCS',
-    crossPlantStatus: '活跃',
-    industrySector: '电子',
-    validFrom: '2024-04-01',
-    validTo: '2029-12-31',
-    plant: '1100',
-    mrpType: 'PD',
-    procurementType: 'E',
-    lotSize: 'FX',
-    reorderPoint: 30,
-    salesOrg: '1000',
-    distrChannel: '20',
-    division: '00',
-    valuationClass: '7920',
-    priceUnit: 1,
-    standardPrice: 450.0,
-    movingPrice: 468.0,
-  },
-  {
-    id: 6,
-    materialNumber: 'MAT-006',
-    materialType: 'VERP',
-    materialGroup: '04-包装',
-    description: '瓦楞纸箱 400x300x250mm',
-    baseUom: 'PCS',
-    crossPlantStatus: '活跃',
-    industrySector: '化工',
-    validFrom: '2024-01-01',
-    validTo: '2029-12-31',
-    plant: '1000',
-    mrpType: 'VB',
-    procurementType: 'F',
-    lotSize: 'FX',
-    reorderPoint: 1000,
-    valuationClass: '4000',
-    priceUnit: 1,
-    standardPrice: 3.5,
-    movingPrice: 3.8,
-  },
-  {
-    id: 7,
-    materialNumber: 'MAT-007',
-    materialType: 'DIEN',
-    materialGroup: '05-服务',
-    description: '设备年度维护保养服务',
-    baseUom: 'AU',
-    crossPlantStatus: '活跃',
-    industrySector: '服务',
-    validFrom: '2024-06-01',
-    validTo: '2025-12-31',
-  },
-  {
-    id: 8,
-    materialNumber: 'MAT-008',
-    materialType: 'NLAG',
-    materialGroup: '06-非库存',
-    description: '办公耗材（按需采购）',
-    baseUom: 'SET',
-    crossPlantStatus: '受限',
-    industrySector: '化工',
-    validFrom: '2024-01-01',
-    validTo: '2025-06-30',
-  },
-];
+interface Material extends MaterialDTO {}
 
 // ============================================================
 // Lookup maps
@@ -258,12 +66,18 @@ const procurementTypeMap: Record<string, string> = {
   F: '外购',
 };
 
+// Default tenant ID (should be from user context in production)
+const DEFAULT_TENANT_ID = 1;
+
 // ============================================================
 // Component
 // ============================================================
 export default function MaterialsPage() {
   const [loading, setLoading] = useState(false);
-  const [materials] = useState<Material[]>(mockMaterials);
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [activeTab, setActiveTab] = useState('all');
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
@@ -275,6 +89,32 @@ export default function MaterialsPage() {
   const [searchForm] = Form.useForm();
   const [plantForm] = Form.useForm();
   const [salesForm] = Form.useForm();
+
+  // ---------- Fetch data ----------
+  const fetchMaterials = useCallback(async (page = currentPage, size = pageSize, materialType?: string) => {
+    try {
+      setLoading(true);
+      const res = await materialApi.getPage({
+        tenantId: DEFAULT_TENANT_ID,
+        materialType: materialType || undefined,
+        current: page,
+        size,
+      });
+      if (res.success && res.data) {
+        setMaterials(res.data.records as Material[]);
+        setTotal(res.data.total);
+      }
+    } catch (error) {
+      console.error('Failed to fetch materials:', error);
+      message.error('获取物料列表失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pageSize]);
+
+  useEffect(() => {
+    fetchMaterials();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------- Filtering ----------
   const filteredData =
@@ -291,16 +131,46 @@ export default function MaterialsPage() {
   };
 
   // ---------- Handlers ----------
-  const handleViewDetail = (record: Material) => {
-    setSelectedMaterial(record);
+  const handleViewDetail = async (record: Material) => {
+    try {
+      const res = await materialApi.getById(record.id);
+      if (res.success && res.data) {
+        setSelectedMaterial(res.data as Material);
+      } else {
+        setSelectedMaterial(record);
+      }
+    } catch {
+      setSelectedMaterial(record);
+    }
     setDetailTab('basic');
     setDetailModalVisible(true);
   };
 
-  const handleCreate = () => {
-    message.success('物料主数据创建成功');
-    setCreateModalVisible(false);
-    createForm.resetFields();
+  const handleCreate = async () => {
+    try {
+      const values = await createForm.validateFields();
+      const data = {
+        ...values,
+        tenantId: DEFAULT_TENANT_ID,
+        validFrom: values.validFrom?.format('YYYY-MM-DD'),
+        validTo: values.validTo?.format('YYYY-MM-DD'),
+      };
+      const res = await materialApi.create(data);
+      if (res.success) {
+        message.success('物料主数据创建成功');
+        setCreateModalVisible(false);
+        createForm.resetFields();
+        fetchMaterials();
+      } else {
+        message.error(res.message || '创建失败');
+      }
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'errorFields' in error) {
+        return; // form validation error
+      }
+      console.error('Failed to create material:', error);
+      message.error('创建物料失败');
+    }
   };
 
   const handleExtendPlant = () => {
@@ -322,10 +192,62 @@ export default function MaterialsPage() {
       okText: '删除',
       okType: 'danger',
       cancelText: '取消',
-      onOk: () => {
-        message.success(`物料 ${record.materialNumber} 已标记删除 (MM06)`);
+      onOk: async () => {
+        try {
+          const res = await materialApi.delete(record.id);
+          if (res.success) {
+            message.success(`物料 ${record.materialNumber} 已标记删除 (MM06)`);
+            fetchMaterials();
+          } else {
+            message.error(res.message || '删除失败');
+          }
+        } catch (error) {
+          console.error('Failed to delete material:', error);
+          message.error('删除物料失败');
+        }
       },
     });
+  };
+
+  const handleSearch = async () => {
+    const values = searchForm.getFieldsValue();
+    const keyword = values.materialNumber || values.description;
+    if (keyword) {
+      try {
+        setLoading(true);
+        const res = await materialApi.search({
+          keyword,
+          tenantId: DEFAULT_TENANT_ID,
+          current: 1,
+          size: pageSize,
+        });
+        if (res.success && res.data) {
+          setMaterials(res.data.records as Material[]);
+          setTotal(res.data.total);
+          setCurrentPage(1);
+        }
+      } catch (error) {
+        console.error('Failed to search materials:', error);
+        message.error('搜索物料失败');
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      fetchMaterials(1);
+    }
+  };
+
+  const handleRefresh = () => {
+    searchForm.resetFields();
+    setActiveTab('all');
+    setCurrentPage(1);
+    fetchMaterials(1);
+  };
+
+  const handleTabChange = (key: string) => {
+    setActiveTab(key);
+    setCurrentPage(1);
+    fetchMaterials(1, pageSize, key === 'all' ? undefined : key);
   };
 
   // ---------- Table columns ----------
@@ -580,7 +502,7 @@ export default function MaterialsPage() {
         }
         extra={
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => setLoading(!loading)}>
+            <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
               刷新
             </Button>
             <Button
@@ -641,7 +563,7 @@ export default function MaterialsPage() {
         {/* Tabs - filter by material type */}
         <Tabs
           activeKey={activeTab}
-          onChange={setActiveTab}
+          onChange={handleTabChange}
           items={[
             { key: 'all', label: '全部' },
             { key: 'FERT', label: 'FERT 成品' },
@@ -687,7 +609,7 @@ export default function MaterialsPage() {
             />
           </Form.Item>
           <Form.Item>
-            <Button type="primary" icon={<SearchOutlined />}>
+            <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
               查询
             </Button>
           </Form.Item>
@@ -702,9 +624,16 @@ export default function MaterialsPage() {
           size="small"
           scroll={{ x: 1400 }}
           pagination={{
-            defaultPageSize: 20,
+            current: currentPage,
+            pageSize,
+            total,
             showSizeChanger: true,
             showTotal: (t) => `共 ${t} 条`,
+            onChange: (page, size) => {
+              setCurrentPage(page);
+              setPageSize(size);
+              fetchMaterials(page, size, activeTab === 'all' ? undefined : activeTab);
+            },
           }}
         />
       </Card>

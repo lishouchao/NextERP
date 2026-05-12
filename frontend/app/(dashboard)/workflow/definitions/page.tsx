@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { apiClient } from '@/lib/api/client';
+import api from '@/lib/api/client';
 
 interface ProcessDefinition {
   id: number;
@@ -25,7 +25,7 @@ export default function ProcessDefinitionsPage() {
   const fetchDefinitions = async () => {
     try {
       const tenantId = localStorage.getItem('tenantId') || '1';
-      const response = await apiClient.get(`/workflow/v1/definitions/published?tenantId=${tenantId}`);
+      const response = await api.get(`/workflow/v1/definitions/published?tenantId=${tenantId}`);
       setDefinitions(response.data);
     } catch (error) {
       console.error('获取流程定义失败', error);
@@ -37,7 +37,7 @@ export default function ProcessDefinitionsPage() {
   const startProcess = async (processKey: string) => {
     try {
       const userId = localStorage.getItem('userId') || '1';
-      await apiClient.post('/workflow/v1/process/start', {
+      await api.post('/workflow/v1/process/start', {
         processDefinitionKey: processKey,
         businessKey: `BIZ-${Date.now()}`,
         variables: {},

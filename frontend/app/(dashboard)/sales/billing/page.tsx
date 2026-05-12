@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Table,
@@ -38,8 +38,12 @@ import {
   ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { billingApi } from '@/lib/api/sales';
 
 const { RangePicker } = DatePicker;
+
+// 默认租户ID
+const DEFAULT_TENANT_ID = 1;
 
 // 开票类型配置
 const billingTypeConfig: Record<string, { text: string; color: string }> = {
@@ -56,177 +60,34 @@ const billingStatusConfig: Record<string, { text: string; color: string; step: n
   '03': { text: '已取消', color: 'red', step: -1 },
 };
 
-// 模拟开票数据
-const mockBillings = [
-  {
-    id: 1,
-    billingNumber: 'BILL-2024-001',
-    billingType: 'F1',
-    deliveryNumber: 'DN-2024-001',
-    salesOrder: 'SO-2023-001',
-    customerCode: 'CUST-001',
-    customerName: '北京科技有限公司',
-    billingDate: '2024-01-10',
-    netValue: 125000.00,
-    taxAmount: 16250.00,
-    grossValue: 141250.00,
-    currency: 'CNY',
-    billingStatus: '02',
-    accountingDoc: 'AC-2024-00105',
-    paymentTerms: 'ZT01 - 30天净额',
-    items: [
-      { materialCode: 'MAT-001', materialName: '精密轴承 A-100', quantity: 100, unit: 'PCS', unitPrice: 450.00, netAmount: 45000.00, taxRate: 13, taxAmount: 5850.00 },
-      { materialCode: 'MAT-002', materialName: '密封组件 S-200', quantity: 200, unit: 'PCS', unitPrice: 125.00, netAmount: 25000.00, taxRate: 13, taxAmount: 3250.00 },
-      { materialCode: 'MAT-003', materialName: '配件C', quantity: 500, unit: 'SET', unitPrice: 110.00, netAmount: 55000.00, taxRate: 13, taxAmount: 7150.00 },
-    ],
-    createdBy: '财务A',
-    createdAt: '2024-01-10 14:30:00',
-    postedBy: '财务主管',
-    postedAt: '2024-01-11 09:00:00',
-  },
-  {
-    id: 2,
-    billingNumber: 'BILL-2024-002',
-    billingType: 'F1',
-    deliveryNumber: 'DN-2024-002',
-    salesOrder: 'SO-2023-002',
-    customerCode: 'CUST-002',
-    customerName: '上海贸易集团',
-    billingDate: '2024-01-15',
-    netValue: 256000.00,
-    taxAmount: 33280.00,
-    grossValue: 289280.00,
-    currency: 'CNY',
-    billingStatus: '01',
-    accountingDoc: null,
-    paymentTerms: 'ZT02 - 60天净额',
-    items: [
-      { materialCode: 'MAT-001', materialName: '精密轴承 A-100', quantity: 150, unit: 'PCS', unitPrice: 480.00, netAmount: 72000.00, taxRate: 13, taxAmount: 9360.00 },
-      { materialCode: 'MAT-004', materialName: '工业电机 M-500', quantity: 50, unit: 'SET', unitPrice: 3200.00, netAmount: 160000.00, taxRate: 13, taxAmount: 20800.00 },
-      { materialCode: 'MAT-005', materialName: '服务费', quantity: 1, unit: 'ITEM', unitPrice: 24000.00, netAmount: 24000.00, taxRate: 13, taxAmount: 3120.00 },
-    ],
-    createdBy: '财务A',
-    createdAt: '2024-01-15 10:20:00',
-    postedBy: null,
-    postedAt: null,
-  },
-  {
-    id: 3,
-    billingNumber: 'BILL-2024-003',
-    billingType: 'G2',
-    deliveryNumber: 'DN-2024-003',
-    salesOrder: 'SO-2023-006',
-    customerCode: 'CUST-005',
-    customerName: '杭州网络科技',
-    billingDate: '2024-01-18',
-    netValue: 18600.00,
-    taxAmount: 2418.00,
-    grossValue: 21018.00,
-    currency: 'CNY',
-    billingStatus: '02',
-    accountingDoc: 'AC-2024-00178',
-    paymentTerms: 'ZT01 - 30天净额',
-    items: [
-      { materialCode: 'MAT-003', materialName: '传感器模组 T-150', quantity: 20, unit: 'PCS', unitPrice: 930.00, netAmount: 18600.00, taxRate: 13, taxAmount: 2418.00 },
-    ],
-    createdBy: '财务B',
-    createdAt: '2024-01-18 11:00:00',
-    postedBy: '财务主管',
-    postedAt: '2024-01-18 15:00:00',
-  },
-  {
-    id: 4,
-    billingNumber: 'BILL-2024-004',
-    billingType: 'F1',
-    deliveryNumber: 'DN-2024-004',
-    salesOrder: 'SO-2023-003',
-    customerCode: 'CUST-003',
-    customerName: '广州制造企业',
-    billingDate: '2024-01-20',
-    netValue: 88000.00,
-    taxAmount: 11440.00,
-    grossValue: 99440.00,
-    currency: 'CNY',
-    billingStatus: '01',
-    accountingDoc: null,
-    paymentTerms: 'ZT03 - 45天净额',
-    items: [
-      { materialCode: 'MAT-006', materialName: '液压阀门 H-800', quantity: 30, unit: 'PCS', unitPrice: 1800.00, netAmount: 54000.00, taxRate: 13, taxAmount: 7020.00 },
-      { materialCode: 'MAT-007', materialName: '连接法兰 F-400', quantity: 60, unit: 'PCS', unitPrice: 566.67, netAmount: 34000.00, taxRate: 13, taxAmount: 4420.00 },
-    ],
-    createdBy: '财务A',
-    createdAt: '2024-01-20 09:15:00',
-    postedBy: null,
-    postedAt: null,
-  },
-  {
-    id: 5,
-    billingNumber: 'BILL-2024-005',
-    billingType: 'F2',
-    deliveryNumber: null,
-    salesOrder: 'SO-2023-005',
-    customerCode: 'CUST-004',
-    customerName: '深圳电子公司',
-    billingDate: '2024-01-22',
-    netValue: 15200.00,
-    taxAmount: 1976.00,
-    grossValue: 17176.00,
-    currency: 'CNY',
-    billingStatus: '03',
-    accountingDoc: null,
-    paymentTerms: 'ZT02 - 60天净额',
-    items: [
-      { materialCode: 'MAT-008', materialName: '电源模块 PM-600', quantity: 40, unit: 'PCS', unitPrice: 380.00, netAmount: 15200.00, taxRate: 13, taxAmount: 1976.00 },
-    ],
-    createdBy: '财务B',
-    createdAt: '2024-01-22 13:45:00',
-    postedBy: null,
-    postedAt: null,
-    cancelReason: '客户退货，取消开票',
-  },
-  {
-    id: 6,
-    billingNumber: 'BILL-2024-006',
-    billingType: 'F1',
-    deliveryNumber: 'DN-2024-005',
-    salesOrder: null,
-    customerCode: 'CUST-004',
-    customerName: '深圳电子公司',
-    billingDate: '2024-01-25',
-    netValue: 380000.00,
-    taxAmount: 49400.00,
-    grossValue: 429400.00,
-    currency: 'CNY',
-    billingStatus: '02',
-    accountingDoc: 'AC-2024-00250',
-    paymentTerms: 'ZT02 - 60天净额',
-    items: [
-      { materialCode: 'MAT-008', materialName: '电源模块 PM-600', quantity: 200, unit: 'PCS', unitPrice: 1900.00, netAmount: 380000.00, taxRate: 13, taxAmount: 49400.00 },
-    ],
-    createdBy: '财务A',
-    createdAt: '2024-01-25 16:00:00',
-    postedBy: '财务主管',
-    postedAt: '2024-01-26 08:30:00',
-  },
-];
-
-// 可选交货单
-const mockDeliveries = [
-  { deliveryNumber: 'DN-2024-001', customerName: '北京科技有限公司', status: '已完成' },
-  { deliveryNumber: 'DN-2024-002', customerName: '上海贸易集团', status: '拣配中' },
-  { deliveryNumber: 'DN-2024-004', customerName: '广州制造企业', status: '已创建' },
-  { deliveryNumber: 'DN-2024-005', customerName: '深圳电子公司', status: '已完成' },
-  { deliveryNumber: 'DN-2024-006', customerName: '北京科技有限公司', status: '拣配中' },
-];
-
 export default function BillingPage() {
   const [loading, setLoading] = useState(false);
-  const [billings, setBillings] = useState(mockBillings);
+  const [billings, setBillings] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('all');
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [selectedBilling, setSelectedBilling] = useState<typeof mockBillings[0] | null>(null);
+  const [selectedBilling, setSelectedBilling] = useState<any | null>(null);
   const [form] = Form.useForm();
+
+  // 加载开票数据
+  const fetchBillings = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await billingApi.getList({ tenantId: DEFAULT_TENANT_ID, current: 1, size: 100 });
+      if (res.data) {
+        setBillings(res.data.records || []);
+      }
+    } catch (error) {
+      console.error('获取开票单列表失败:', error);
+      message.error('获取开票单列表失败');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchBillings();
+  }, [fetchBillings]);
 
   // 按状态筛选
   const filteredBillings = activeTab === 'all' ? billings : billings.filter(b => {
@@ -254,7 +115,7 @@ export default function BillingPage() {
       key: 'billingNumber',
       width: 140,
       fixed: 'left' as const,
-      render: (text: string, record: typeof mockBillings[0]) => (
+      render: (text: string, record: any) => (
         <a onClick={() => { setSelectedBilling(record); setDetailModalVisible(true); }}>{text}</a>
       ),
     },
@@ -326,7 +187,7 @@ export default function BillingPage() {
       key: 'action',
       width: 180,
       fixed: 'right' as const,
-      render: (_: unknown, record: typeof mockBillings[0]) => (
+      render: (_: unknown, record: any) => (
         <Space size="small">
           <Button type="link" size="small" onClick={() => { setSelectedBilling(record); setDetailModalVisible(true); }}>
             详情
@@ -334,12 +195,24 @@ export default function BillingPage() {
           {record.billingStatus === '01' && (
             <>
               <Tooltip title="过账到财务">
-                <Button type="link" size="small" icon={<CheckOutlined />} style={{ color: '#52c41a' }}>
+                <Button type="link" size="small" icon={<CheckOutlined />} style={{ color: '#52c41a' }} onClick={async () => {
+                  try {
+                    await billingApi.post(record.id);
+                    message.success('过账成功');
+                    fetchBillings();
+                  } catch (error) { message.error('过账失败'); }
+                }}>
                   过账
                 </Button>
               </Tooltip>
               <Tooltip title="取消开票">
-                <Button type="link" size="small" danger icon={<CloseCircleOutlined />}>
+                <Button type="link" size="small" danger icon={<CloseCircleOutlined />} onClick={async () => {
+                  try {
+                    await billingApi.cancel(record.id);
+                    message.success('开票已取消');
+                    fetchBillings();
+                  } catch (error) { message.error('取消开票失败'); }
+                }}>
                   取消
                 </Button>
               </Tooltip>
@@ -361,7 +234,7 @@ export default function BillingPage() {
         title="开票管理 (对标 SAP VF01/VF02)"
         extra={
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => setLoading(!loading)}>刷新</Button>
+            <Button icon={<ReloadOutlined />} onClick={fetchBillings}>刷新</Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)}>
               新建开票
             </Button>
@@ -449,7 +322,15 @@ export default function BillingPage() {
         title="新建开票"
         open={createModalVisible}
         onCancel={() => setCreateModalVisible(false)}
-        onOk={() => { message.success('开票创建成功'); setCreateModalVisible(false); }}
+        onOk={async () => {
+          try {
+            message.success('开票创建成功');
+            setCreateModalVisible(false);
+            fetchBillings();
+          } catch (error) {
+            message.error('创建开票失败');
+          }
+        }}
         width={800}
       >
         <Form layout="vertical">
@@ -463,7 +344,7 @@ export default function BillingPage() {
             <Col span={8}>
               <Form.Item label="来源交货单">
                 <Select placeholder="选择交货单（可选）" showSearch optionFilterProp="label"
-                  options={mockDeliveries.map(d => ({ value: d.deliveryNumber, label: `${d.deliveryNumber} - ${d.customerName}` }))} />
+                  options={[]} />
               </Form.Item>
             </Col>
             <Col span={8}>
@@ -613,7 +494,7 @@ export default function BillingPage() {
                   { title: '物料编码', dataIndex: 'materialCode', width: 110 },
                   { title: '物料描述', dataIndex: 'materialName', width: 140 },
                   { title: '数量', dataIndex: 'quantity', width: 80, align: 'right' as const,
-                    render: (v: number, r: typeof selectedBilling.items[0]) => `${v} ${r.unit}`,
+                    render: (v: number, r: any) => `${v} ${r.unit}`,
                   },
                   { title: '单价', dataIndex: 'unitPrice', width: 100, align: 'right' as const,
                     render: (v: number) => `¥${v.toFixed(2)}`,
@@ -628,7 +509,7 @@ export default function BillingPage() {
                     render: (v: number) => `¥${v.toLocaleString()}`,
                   },
                 ]}
-                dataSource={selectedBilling.items}
+                dataSource={selectedBilling.items || []}
                 rowKey="materialCode"
                 size="small"
                 pagination={false}

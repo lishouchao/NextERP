@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { apiClient } from '@/lib/api/client';
+import api from '@/lib/api/client';
 
 interface Task {
   taskId: string;
@@ -24,7 +24,7 @@ export default function MyTasksPage() {
   const fetchTasks = async () => {
     try {
       const userId = localStorage.getItem('userId') || '1';
-      const response = await apiClient.get(`/workflow/v1/tasks/todo?userId=${userId}`);
+      const response = await api.get(`/workflow/v1/tasks/todo?userId=${userId}`);
       setTasks(response.data);
     } catch (error) {
       console.error('获取任务列表失败', error);
@@ -35,7 +35,7 @@ export default function MyTasksPage() {
 
   const completeTask = async (taskId: string) => {
     try {
-      await apiClient.post('/workflow/v1/task/complete', {
+      await api.post('/workflow/v1/task/complete', {
         taskId,
         variables: {},
         comment: '同意',

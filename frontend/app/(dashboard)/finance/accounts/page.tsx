@@ -28,54 +28,16 @@ import {
   BankOutlined,
   DollarOutlined,
 } from '@ant-design/icons';
-import type { FinAccount } from '@/types/finance';
+import type { FinAccount, FinAccountFormData } from '@/types/finance';
 import {
   ACCOUNT_TYPE_OPTIONS,
   ACCOUNT_DIRECTION_OPTIONS,
 } from '@/types/finance';
-
-// 模拟数据 - 会计科目
-const mockAccounts: FinAccount[] = [
-  // 资产类
-  { id: 1, accountCode: '1001', accountName: '库存现金', accountType: 1, accountDirection: 1, parentId: null, accountLevel: 1, isLeaf: true, isCash: true, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: false, status: 1 },
-  { id: 2, accountCode: '1002', accountName: '银行存款', accountType: 1, accountDirection: 1, parentId: null, accountLevel: 1, isLeaf: false, isCash: false, isBank: true, isQuantity: false, isForeignCurrency: true, isAuxiliary: false, status: 1 },
-  { id: 3, accountCode: '100201', accountName: '工商银行', accountType: 1, accountDirection: 1, parentId: 2, accountLevel: 2, isLeaf: true, isCash: false, isBank: true, isQuantity: false, isForeignCurrency: true, isAuxiliary: true, auxiliaryType: '["project"]', status: 1 },
-  { id: 4, accountCode: '100202', accountName: '建设银行', accountType: 1, accountDirection: 1, parentId: 2, accountLevel: 2, isLeaf: true, isCash: false, isBank: true, isQuantity: false, isForeignCurrency: true, isAuxiliary: true, auxiliaryType: '["project"]', status: 1 },
-  { id: 5, accountCode: '1012', accountName: '其他货币资金', accountType: 1, accountDirection: 1, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: false, status: 1 },
-  { id: 6, accountCode: '1122', accountName: '应收账款', accountType: 1, accountDirection: 1, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: true, auxiliaryType: '["customer"]', status: 1 },
-  { id: 7, accountCode: '1123', accountName: '预付账款', accountType: 1, accountDirection: 1, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: true, auxiliaryType: '["supplier"]', status: 1 },
-  { id: 8, accountCode: '1405', accountName: '原材料', accountType: 1, accountDirection: 1, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: true, quantityUnit: '千克', isForeignCurrency: false, isAuxiliary: true, auxiliaryType: '["warehouse","material"]', status: 1 },
-  { id: 9, accountCode: '1406', accountName: '库存商品', accountType: 1, accountDirection: 1, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: true, quantityUnit: '件', isForeignCurrency: false, isAuxiliary: true, auxiliaryType: '["warehouse","product"]', status: 1 },
-  { id: 10, accountCode: '1601', accountName: '固定资产', accountType: 1, accountDirection: 1, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: true, quantityUnit: '台', isForeignCurrency: false, isAuxiliary: true, auxiliaryType: '["asset"]', status: 1 },
-  // 负债类
-  { id: 11, accountCode: '2001', accountName: '短期借款', accountType: 2, accountDirection: 2, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: true, isAuxiliary: false, status: 1 },
-  { id: 12, accountCode: '2202', accountName: '应付账款', accountType: 2, accountDirection: 2, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: true, auxiliaryType: '["supplier"]', status: 1 },
-  { id: 13, accountCode: '2203', accountName: '预收账款', accountType: 2, accountDirection: 2, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: true, auxiliaryType: '["customer"]', status: 1 },
-  { id: 14, accountCode: '2211', accountName: '应付职工薪酬', accountType: 2, accountDirection: 2, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: true, auxiliaryType: '["department"]', status: 1 },
-  { id: 15, accountCode: '2221', accountName: '应交税费', accountType: 2, accountDirection: 2, parentId: null, accountLevel: 1, isLeaf: false, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: false, status: 1 },
-  { id: 16, accountCode: '222101', accountName: '应交增值税', accountType: 2, accountDirection: 2, parentId: 15, accountLevel: 2, isLeaf: true, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: false, status: 1 },
-  // 所有者权益
-  { id: 17, accountCode: '4001', accountName: '实收资本', accountType: 3, accountDirection: 2, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: false, status: 1 },
-  { id: 18, accountCode: '4002', accountName: '资本公积', accountType: 3, accountDirection: 2, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: false, status: 1 },
-  { id: 19, accountCode: '4101', accountName: '盈余公积', accountType: 3, accountDirection: 2, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: false, status: 1 },
-  { id: 20, accountCode: '4103', accountName: '本年利润', accountType: 3, accountDirection: 2, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: false, status: 1 },
-  // 成本类
-  { id: 21, accountCode: '5001', accountName: '生产成本', accountType: 4, accountDirection: 1, parentId: null, accountLevel: 1, isLeaf: false, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: false, status: 1 },
-  { id: 22, accountCode: '500101', accountName: '直接材料', accountType: 4, accountDirection: 1, parentId: 21, accountLevel: 2, isLeaf: true, isCash: false, isBank: false, isQuantity: true, quantityUnit: '千克', isForeignCurrency: false, isAuxiliary: true, auxiliaryType: '["product","material"]', status: 1 },
-  { id: 23, accountCode: '500102', accountName: '直接人工', accountType: 4, accountDirection: 1, parentId: 21, accountLevel: 2, isLeaf: true, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: true, auxiliaryType: '["department"]', status: 1 },
-  { id: 24, accountCode: '5101', accountName: '制造费用', accountType: 4, accountDirection: 1, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: true, auxiliaryType: '["department"]', status: 1 },
-  // 损益类
-  { id: 25, accountCode: '6001', accountName: '主营业务收入', accountType: 5, accountDirection: 2, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: true, auxiliaryType: '["department","product"]', status: 1 },
-  { id: 26, accountCode: '6051', accountName: '其他业务收入', accountType: 5, accountDirection: 2, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: false, status: 1 },
-  { id: 27, accountCode: '6401', accountName: '主营业务成本', accountType: 5, accountDirection: 1, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: true, quantityUnit: '件', isForeignCurrency: false, isAuxiliary: true, auxiliaryType: '["product"]', status: 1 },
-  { id: 28, accountCode: '6601', accountName: '销售费用', accountType: 5, accountDirection: 1, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: true, auxiliaryType: '["department"]', status: 1 },
-  { id: 29, accountCode: '6602', accountName: '管理费用', accountType: 5, accountDirection: 1, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: false, isAuxiliary: true, auxiliaryType: '["department"]', status: 1 },
-  { id: 30, accountCode: '6603', accountName: '财务费用', accountType: 5, accountDirection: 1, parentId: null, accountLevel: 1, isLeaf: true, isCash: false, isBank: false, isQuantity: false, isForeignCurrency: true, isAuxiliary: false, status: 1 },
-];
+import { accountApi } from '@/lib/api/finance';
 
 export default function AccountsPage() {
   const [loading, setLoading] = useState(false);
-  const [accounts, setAccounts] = useState<FinAccount[]>(mockAccounts);
+  const [accounts, setAccounts] = useState<FinAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<FinAccount | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingAccount, setEditingAccount] = useState<FinAccount | null>(null);
@@ -85,11 +47,14 @@ export default function AccountsPage() {
   // 加载科目数据
   const loadAccounts = async () => {
     setLoading(true);
-    // 模拟 API 调用
-    setTimeout(() => {
-      setAccounts(mockAccounts);
+    try {
+      const res = await accountApi.getList();
+      setAccounts(res.data || []);
+    } catch (err) {
+      message.error('加载科目数据失败');
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   useEffect(() => {
@@ -187,31 +152,48 @@ export default function AccountsPage() {
       const values = await form.validateFields();
       setLoading(true);
 
-      setTimeout(() => {
-        if (editingAccount) {
-          setAccounts((prev) =>
-            prev.map((a) => (a.id === editingAccount.id ? { ...a, ...values } : a))
-          );
-          message.success('更新科目成功');
-        } else {
-          const newAccount: FinAccount = {
-            id: Math.max(...accounts.map((a) => a.id)) + 1,
-            ...values,
-            isLeaf: true,
-          };
-          setAccounts((prev) => [...prev, newAccount]);
-          message.success('创建科目成功');
-        }
-        handleCloseModal();
-        setLoading(false);
-      }, 500);
-    } catch (error) {
-      console.error(error);
+      const formData: FinAccountFormData = {
+        accountCode: values.accountCode,
+        accountName: values.accountName,
+        accountType: values.accountType,
+        accountDirection: values.accountDirection,
+        parentId: values.parentId,
+        isCash: values.isCash,
+        isBank: values.isBank,
+        isQuantity: values.isQuantity,
+        quantityUnit: values.quantityUnit,
+        isForeignCurrency: values.isForeignCurrency,
+        currency: values.currency,
+        isAuxiliary: values.isAuxiliary,
+        auxiliaryType: values.auxiliaryType,
+        openingBalance: values.openingBalance,
+        remark: values.remark,
+      };
+
+      if (editingAccount) {
+        await accountApi.update(editingAccount.id, formData);
+        message.success('更新科目成功');
+      } else {
+        await accountApi.create(formData);
+        message.success('创建科目成功');
+      }
+      handleCloseModal();
+      loadAccounts();
+    } catch (error: any) {
+      if (error?.response?.data?.message) {
+        message.error(error.response.data.message);
+      } else if (error?.message) {
+        // form validation error, ignore
+      } else {
+        message.error('操作失败');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   // 删除科目
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     const hasChildren = accounts.some((a) => a.parentId === id);
     if (hasChildren) {
       message.error('该科目下有子科目，无法删除');
@@ -219,11 +201,15 @@ export default function AccountsPage() {
     }
 
     setLoading(true);
-    setTimeout(() => {
-      setAccounts((prev) => prev.filter((a) => a.id !== id));
+    try {
+      await accountApi.delete(id);
       message.success('删除科目成功');
+      loadAccounts();
+    } catch (err) {
+      message.error('删除科目失败');
+    } finally {
       setLoading(false);
-    }, 300);
+    }
   };
 
   // 表格列定义

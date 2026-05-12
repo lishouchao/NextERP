@@ -144,7 +144,7 @@ export default function OrganizationPage() {
           ),
           key: ou.code,
           icon: (props: any) => props?.expanded ? <FolderOpenOutlined /> : <FolderOutlined />,
-          children: children.length > 0 ? children : undefined,
+          children: children && children.length > 0 ? children : undefined,
         };
       });
   };
@@ -261,7 +261,7 @@ export default function OrganizationPage() {
                   blockNode
                   expandedKeys={expandedKeys}
                   selectedKeys={selectedKeys}
-                  onExpand={setExpandedKeys}
+                  onExpand={(keys: any) => setExpandedKeys(keys)}
                   onSelect={onSelect}
                   treeData={buildOrgTree()}
                   style={{ fontSize: 14 }}
@@ -284,7 +284,7 @@ export default function OrganizationPage() {
                     <Descriptions.Item label="成本中心">{selectedOrgUnit.costCenterId || '-'}</Descriptions.Item>
                     <Descriptions.Item label="状态"><Tag color={statusConfig[selectedOrgUnit.status]?.color}>{statusConfig[selectedOrgUnit.status]?.text}</Tag></Descriptions.Item>
                   </Descriptions>
-                  <Divider orientation="small">下属职位</Divider>
+                  <Divider orientation="left">下属职位</Divider>
                   <List
                     size="small"
                     dataSource={mockPositions.filter(p => p.orgUnitId === selectedOrgUnit.id)}
@@ -340,7 +340,7 @@ export default function OrganizationPage() {
         width={700}
       >
         {modalType === 'orgUnit' && (
-          <Form form={form} layout="vertical" initialValues={selectedOrgUnit}>
+          <Form form={form} layout="vertical" initialValues={selectedOrgUnit as any}>
             <Row gutter={16}>
               <Col span={12}><Form.Item label="组织编码" name="code" required><Input /></Form.Item></Col>
               <Col span={12}><Form.Item label="组织名称" name="name" required><Input /></Form.Item></Col>

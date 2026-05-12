@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { apiClient } from '@/lib/api/client';
+import api from '@/lib/api/client';
 
 interface ProcessInstance {
   processInstanceId: string;
@@ -23,7 +23,7 @@ export default function MyRequestsPage() {
   const fetchInstances = async () => {
     try {
       const tenantId = localStorage.getItem('tenantId') || '1';
-      const response = await apiClient.get(`/workflow/v1/monitor/instances?tenantId=${tenantId}`);
+      const response = await api.get(`/workflow/v1/monitor/instances?tenantId=${tenantId}`);
       setInstances(response.data);
     } catch (error) {
       console.error('获取流程实例失败', error);

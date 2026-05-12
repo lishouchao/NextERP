@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Table,
@@ -34,29 +34,26 @@ import {
   FileTextOutlined,
   DownloadOutlined,
 } from '@ant-design/icons';
+import { bomApi } from '@/lib/api/production';
+import type { ProBomDTO } from '@/lib/api/production';
 
-// 模拟BOM数据
-const mockBOMs = [
-  { id: 1, bomCode: 'BOM-001', productCode: 'PROD-001', productName: '产品A', version: 'V1.0', status: 1, baseQty: 1, unit: 'PCS', effectiveFrom: '2023-01-01', effectiveTo: null, components: 5, createdBy: '工程师A', createdAt: '2023-01-15', updatedAt: '2023-06-20' },
-  { id: 2, bomCode: 'BOM-002', productCode: 'PROD-002', productName: '产品B', version: 'V1.0', status: 1, baseQty: 1, unit: 'PCS', effectiveFrom: '2023-02-01', effectiveTo: null, components: 4, createdBy: '工程师A', createdAt: '2023-02-10', updatedAt: '2023-05-15' },
-  { id: 3, bomCode: 'BOM-003', productCode: 'PROD-003', productName: '配件C', version: 'V1.0', status: 1, baseQty: 10, unit: 'SET', effectiveFrom: '2023-03-01', effectiveTo: null, components: 3, createdBy: '工程师B', createdAt: '2023-03-05', updatedAt: '2023-03-05' },
-  { id: 4, bomCode: 'BOM-004', productCode: 'PROD-004', productName: '产品D', version: 'V2.0', status: 1, baseQty: 1, unit: 'PCS', effectiveFrom: '2023-06-01', effectiveTo: null, components: 8, createdBy: '工程师B', createdAt: '2023-04-20', updatedAt: '2023-08-10' },
-  { id: 5, bomCode: 'BOM-001-V2', productCode: 'PROD-001', productName: '产品A', version: 'V2.0', status: 0, baseQty: 1, unit: 'PCS', effectiveFrom: '2024-01-01', effectiveTo: null, components: 6, createdBy: '工程师A', createdAt: '2023-11-01', updatedAt: '2023-11-01' },
-  { id: 6, bomCode: 'BOM-005', productCode: 'PROD-005', productName: '产品E', version: 'V1.0', status: 2, baseQty: 1, unit: 'PCS', effectiveFrom: '2023-04-01', effectiveTo: '2023-09-30', components: 4, createdBy: '工程师A', createdAt: '2023-03-20', updatedAt: '2023-03-20' },
-];
+// Default tenant ID
+const DEFAULT_TENANT_ID = 1;
 
-// BOM组件明细
-const mockComponents = [
-  { id: 1, bomId: 1, seq: 10, materialCode: 'MAT-001', materialName: '原材料A', quantity: 2, unit: 'KG', scrapRate: 5, effectiveFrom: '2023-01-01', effectiveTo: null, status: 1 },
-  { id: 2, bomId: 1, seq: 20, materialCode: 'MAT-002', materialName: '原材料B', quantity: 1.5, unit: 'KG', scrapRate: 3, effectiveFrom: '2023-01-01', effectiveTo: null, status: 1 },
-  { id: 3, bomId: 1, seq: 30, materialCode: 'MAT-003', materialName: '包装材料', quantity: 1, unit: 'PCS', scrapRate: 0, effectiveFrom: '2023-01-01', effectiveTo: null, status: 1 },
-  { id: 4, bomId: 1, seq: 40, materialCode: 'MAT-006', materialName: '辅助材料E', quantity: 0.5, unit: 'L', scrapRate: 10, effectiveFrom: '2023-01-01', effectiveTo: null, status: 1 },
-  { id: 5, bomId: 1, seq: 50, materialCode: 'COMP-001', materialName: '零件甲', quantity: 4, unit: 'PCS', scrapRate: 2, effectiveFrom: '2023-01-01', effectiveTo: null, status: 1 },
-  { id: 6, bomId: 2, seq: 10, materialCode: 'MAT-001', materialName: '原材料A', quantity: 3, unit: 'KG', scrapRate: 5, effectiveFrom: '2023-02-01', effectiveTo: null, status: 1 },
-  { id: 7, bomId: 2, seq: 20, materialCode: 'MAT-004', materialName: '半成品C', quantity: 2, unit: 'PCS', scrapRate: 0, effectiveFrom: '2023-02-01', effectiveTo: null, status: 1 },
-  { id: 8, bomId: 2, seq: 30, materialCode: 'MAT-003', materialName: '包装材料', quantity: 1, unit: 'PCS', scrapRate: 0, effectiveFrom: '2023-02-01', effectiveTo: null, status: 1 },
-  { id: 9, bomId: 2, seq: 40, materialCode: 'COMP-002', materialName: '零件乙', quantity: 2, unit: 'PCS', scrapRate: 1, effectiveFrom: '2023-02-01', effectiveTo: null, status: 1 },
-];
+// BOM组件明细 (kept locally for detail view since backend may embed in DTO)
+interface BomComponent {
+  id: number;
+  bomId: number;
+  seq: number;
+  materialCode: string;
+  materialName: string;
+  quantity: number;
+  unit: string;
+  scrapRate: number;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  status: number;
+}
 
 // BOM树形结构数据
 const bomTreeData = [
@@ -90,12 +87,15 @@ const bomTreeData = [
 
 export default function BOMPage() {
   const [loading, setLoading] = useState(false);
-  const [boms, setBOMs] = useState(mockBOMs);
+  const [boms, setBOMs] = useState<ProBomDTO[]>([]);
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [activeTab, setActiveTab] = useState('list');
   const [bomModalVisible, setBOMModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [componentModalVisible, setComponentModalVisible] = useState(false);
-  const [selectedBOM, setSelectedBOM] = useState<typeof mockBOMs[0] | null>(null);
+  const [selectedBOM, setSelectedBOM] = useState<ProBomDTO | null>(null);
   const [form] = Form.useForm();
 
   // 状态配置
@@ -105,10 +105,35 @@ export default function BOMPage() {
     2: { color: 'default', text: '已失效' },
   };
 
+  const fetchBOMs = useCallback(async (page = currentPage, size = pageSize, status?: number) => {
+    try {
+      setLoading(true);
+      const res = await bomApi.getPage({
+        tenantId: DEFAULT_TENANT_ID,
+        status,
+        current: page,
+        size,
+      });
+      if (res.success && res.data) {
+        setBOMs(res.data.records);
+        setTotal(res.data.total);
+      }
+    } catch (error) {
+      console.error('Failed to fetch BOMs:', error);
+      message.error('获取BOM列表失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pageSize]);
+
+  useEffect(() => {
+    fetchBOMs();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // BOM列表列
   const columns = [
     { title: 'BOM编码', dataIndex: 'bomCode', key: 'bomCode', width: 120, fixed: 'left' as const,
-      render: (text: string, record) => (
+      render: (text: string, record: any) => (
         <a onClick={() => { setSelectedBOM(record); setDetailModalVisible(true); }}>{text}</a>
       ),
     },
@@ -118,7 +143,7 @@ export default function BOMPage() {
       render: (version: string) => <Tag color="blue">{version}</Tag>,
     },
     { title: '基准数量', dataIndex: 'baseQty', key: 'baseQty', width: 100,
-      render: (v: number, r) => `${v} ${r.unit}`,
+      render: (v: number, r: any) => `${v} ${r.unit}`,
     },
     { title: '组件数', dataIndex: 'components', key: 'components', width: 80, align: 'center' as const,
       render: (v: number) => <Tag color="purple">{v}</Tag>,
@@ -136,7 +161,7 @@ export default function BOMPage() {
     { title: '创建人', dataIndex: 'createdBy', key: 'createdBy', width: 90 },
     { title: '更新日期', dataIndex: 'updatedAt', key: 'updatedAt', width: 100 },
     { title: '操作', key: 'action', width: 200, fixed: 'right' as const,
-      render: (_: unknown, record) => (
+      render: (_: unknown, record: any) => (
         <Space size="small">
           <Button type="link" size="small" onClick={() => { setSelectedBOM(record); setDetailModalVisible(true); }}>详情</Button>
           {record.status !== 2 && (
@@ -185,12 +210,36 @@ export default function BOMPage() {
     totalComponents: boms.reduce((s, b) => s + b.components, 0),
   };
 
+  const handleCreateBOM = async () => {
+    try {
+      const values = await form.validateFields();
+      const res = await bomApi.create({
+        ...values,
+        tenantId: DEFAULT_TENANT_ID,
+      });
+      if (res.success) {
+        message.success('BOM创建成功');
+        setBOMModalVisible(false);
+        form.resetFields();
+        fetchBOMs();
+      } else {
+        message.error(res.message || '创建失败');
+      }
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'errorFields' in error) {
+        return;
+      }
+      console.error('Failed to create BOM:', error);
+      message.error('创建BOM失败');
+    }
+  };
+
   return (
     <div style={{ padding: 24 }}>
       <Card title="BOM 管理 (对标 SAP CS01/CS02/CS03)"
         extra={
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => setLoading(!loading)}>刷新</Button>
+            <Button icon={<ReloadOutlined />} onClick={() => fetchBOMs()}>刷新</Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setBOMModalVisible(true)}>
               新建BOM
             </Button>
@@ -245,7 +294,7 @@ export default function BOMPage() {
                   options={Object.entries(statusConfig).map(([k, v]) => ({ value: Number(k), label: v.text }))} />
               </Form.Item>
               <Form.Item>
-                <Button type="primary" icon={<SearchOutlined />}>查询</Button>
+                <Button type="primary" icon={<SearchOutlined />} onClick={() => fetchBOMs(1)}>查询</Button>
               </Form.Item>
             </Form>
 
@@ -256,7 +305,17 @@ export default function BOMPage() {
               loading={loading}
               size="small"
               scroll={{ x: 1400 }}
-              pagination={{ defaultPageSize: 20, showSizeChanger: true }}
+              pagination={{
+                current: currentPage,
+                pageSize,
+                total,
+                showSizeChanger: true,
+                onChange: (page, size) => {
+                  setCurrentPage(page);
+                  setPageSize(size);
+                  fetchBOMs(page, size);
+                },
+              }}
             />
           </>
         )}
@@ -286,20 +345,6 @@ export default function BOMPage() {
                   <Descriptions.Item label="生效日期">2023-01-01</Descriptions.Item>
                   <Descriptions.Item label="状态"><Tag color="green">生效中</Tag></Descriptions.Item>
                 </Descriptions>
-                <Table
-                  columns={componentColumns}
-                  dataSource={mockComponents.filter(c => c.bomId === 1)}
-                  rowKey="id"
-                  size="small"
-                  style={{ marginTop: 16 }}
-                  pagination={false}
-                  title={() => (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>组件明细</span>
-                      <Button type="primary" size="small" icon={<PlusOutlined />}>添加组件</Button>
-                    </div>
-                  )}
-                />
               </Card>
             </Col>
           </Row>
@@ -311,35 +356,35 @@ export default function BOMPage() {
         title="新建BOM"
         open={bomModalVisible}
         onCancel={() => setBOMModalVisible(false)}
-        onOk={() => { message.success('BOM创建成功'); setBOMModalVisible(false); }}
+        onOk={handleCreateBOM}
         width={700}
       >
-        <Form layout="vertical">
+        <Form form={form} layout="vertical">
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item label="BOM编码" required>
+              <Form.Item label="BOM编码" name="bomCode" rules={[{ required: true, message: '请输入BOM编码' }]}>
                 <Input placeholder="输入BOM编码" />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item label="版本号" required>
+              <Form.Item label="版本号" name="version" rules={[{ required: true, message: '请输入版本号' }]}>
                 <Input placeholder="如: V1.0" />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item label="产品" required>
+              <Form.Item label="产品编码" name="productCode" rules={[{ required: true, message: '请输入产品编码' }]}>
                 <Input placeholder="选择产品" />
               </Form.Item>
             </Col>
             <Col span={6}>
-              <Form.Item label="基准数量" required>
+              <Form.Item label="基准数量" name="baseQty" rules={[{ required: true, message: '请输入数量' }]}>
                 <InputNumber style={{ width: '100%' }} min={1} placeholder="数量" />
               </Form.Item>
             </Col>
             <Col span={6}>
-              <Form.Item label="单位">
+              <Form.Item label="单位" name="unit">
                 <Select placeholder="单位" options={[
                   { value: 'PCS', label: 'PCS' },
                   { value: 'KG', label: 'KG' },
@@ -350,12 +395,12 @@ export default function BOMPage() {
           </Row>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item label="生效日期">
+              <Form.Item label="生效日期" name="effectiveFrom">
                 <Input type="date" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item label="失效日期">
+              <Form.Item label="失效日期" name="effectiveTo">
                 <Input type="date" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
@@ -400,10 +445,11 @@ export default function BOMPage() {
             <Card title="组件明细" size="small">
               <Table
                 columns={componentColumns}
-                dataSource={mockComponents.filter(c => c.bomId === selectedBOM.id)}
+                dataSource={[]}
                 rowKey="id"
                 size="small"
                 pagination={false}
+                locale={{ emptyText: '暂无组件数据' }}
               />
             </Card>
           </>

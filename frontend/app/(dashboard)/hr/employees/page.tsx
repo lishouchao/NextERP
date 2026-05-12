@@ -26,83 +26,17 @@ import {
   SearchOutlined,
 } from '@ant-design/icons';
 import type { LegacyEmployee } from '@/types/hr';
+import { employeeApi, departmentApi } from '@/lib/api/hr';
 import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
 
-// 模拟员工数据
-const mockLegacyEmployees: LegacyEmployee[] = [
-  {
-    id: 1,
-    employeeNo: 'EMP001',
-    employeeName: '张三',
-    englishName: 'Zhang San',
-    gender: 1,
-    birthDate: '1990-05-15',
-    nation: '汉',
-    idCard: '110101199005150011',
-    nativePlace: '北京市',
-    politicalStatus: '党员',
-    maritalStatus: 2,
-    education: 3,
-    phone: '13800138001',
-    email: 'zhangsan@nexterp.com',
-    deptId: 2,
-    deptName: '技术部',
-    position: '高级工程师',
-    hireDate: '2018-03-01',
-    workStatus: 1,
-    status: 1,
-  },
-  {
-    id: 2,
-    employeeNo: 'EMP002',
-    employeeName: '李四',
-    englishName: 'Li Si',
-    gender: 1,
-    birthDate: '1992-08-20',
-    nation: '汉',
-    idCard: '110101199208200022',
-    nativePlace: '上海市',
-    politicalStatus: '团员',
-    maritalStatus: 1,
-    education: 3,
-    phone: '13800138002',
-    email: 'lisi@nexterp.com',
-    deptId: 2,
-    deptName: '技术部',
-    position: '中级工程师',
-    hireDate: '2019-06-15',
-    workStatus: 1,
-    status: 1,
-  },
-  {
-    id: 3,
-    employeeNo: 'EMP003',
-    employeeName: '王五',
-    englishName: 'Wang Wu',
-    gender: 2,
-    birthDate: '1995-03-10',
-    nation: '汉',
-    idCard: '110101199503100033',
-    nativePlace: '广东省',
-    politicalStatus: '群众',
-    maritalStatus: 1,
-    education: 4,
-    phone: '13800138003',
-    email: 'wangwu@nexterp.com',
-    deptId: 3,
-    deptName: '产品部',
-    position: '产品经理',
-    hireDate: '2020-01-10',
-    workStatus: 1,
-    status: 1,
-  },
-];
-
 export default function LegacyEmployeesPage() {
   const [loading, setLoading] = useState(false);
-  const [employees, setLegacyEmployees] = useState<LegacyEmployee[]>(mockLegacyEmployees);
+  const [employees, setLegacyEmployees] = useState<LegacyEmployee[]>([]);
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingLegacyEmployee, setEditingLegacyEmployee] = useState<LegacyEmployee | null>(null);
   const [form] = Form.useForm();
@@ -111,41 +45,62 @@ export default function LegacyEmployeesPage() {
     deptId: undefined as number | undefined,
     workStatus: undefined as number | undefined,
   });
+  const [deptOptions, setDeptOptions] = useState<{ value: number; label: string }[]>([]);
+
+  // 加载部门选项
+  const loadDeptOptions = async () => {
+    try {
+      const res = await departmentApi.getList();
+      const pageData = res.data;
+      const depts = pageData?.records || (Array.isArray(res.data) ? res.data : []);
+      setDeptOptions(depts.map((d: any) => ({ value: d.id, label: d.deptName })));
+    } catch (err) {
+      // silently ignore
+    }
+  };
+
+  useEffect(() => {
+    loadDeptOptions();
+  }, []);
 
   // 加载员工数据
   const loadLegacyEmployees = async () => {
     setLoading(true);
-    // 模拟 API 调用
-    setTimeout(() => {
-      setLegacyEmployees(mockLegacyEmployees);
+    try {
+      const params: any = {
+        current: currentPage,
+        size: pageSize,
+      };
+      if (searchParams.employeeName) {
+        params.employeeName = searchParams.employeeName;
+      }
+      if (searchParams.deptId) {
+        params.deptId = searchParams.deptId;
+      }
+      if (searchParams.workStatus !== undefined) {
+        params.workStatus = searchParams.workStatus;
+      }
+      const res = await employeeApi.getList(params);
+      const pageData = res.data;
+      if (pageData) {
+        setLegacyEmployees((pageData.records || []) as any);
+        setTotal(pageData.total || 0);
+      }
+    } catch (err) {
+      message.error('加载员工数据失败');
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   useEffect(() => {
     loadLegacyEmployees();
-  }, []);
+  }, [currentPage, pageSize]);
 
   // 搜索
   const handleSearch = () => {
-    setLoading(true);
-    setTimeout(() => {
-      let filtered = mockLegacyEmployees;
-      if (searchParams.employeeName) {
-        filtered = filtered.filter(e =>
-          e.employeeName.includes(searchParams.employeeName) ||
-          e.employeeNo.includes(searchParams.employeeName)
-        );
-      }
-      if (searchParams.deptId) {
-        filtered = filtered.filter(e => e.deptId === searchParams.deptId);
-      }
-      if (searchParams.workStatus !== undefined) {
-        filtered = filtered.filter(e => e.workStatus === searchParams.workStatus);
-      }
-      setLegacyEmployees(filtered);
-      setLoading(false);
-    }, 300);
+    setCurrentPage(1);
+    loadLegacyEmployees();
   };
 
   // 重置搜索
@@ -155,7 +110,9 @@ export default function LegacyEmployeesPage() {
       deptId: undefined,
       workStatus: undefined,
     });
-    loadLegacyEmployees();
+    setCurrentPage(1);
+    // Re-fetch with no filters
+    setTimeout(() => loadLegacyEmployees(), 0);
   };
 
   // 打开新增/编辑弹窗
@@ -186,44 +143,46 @@ export default function LegacyEmployeesPage() {
       const values = await form.validateFields();
       setLoading(true);
 
-      // 模拟 API 调用
-      setTimeout(() => {
-        const formattedValues = {
-          ...values,
-          birthDate: values.birthDate?.format('YYYY-MM-DD'),
-          hireDate: values.hireDate?.format('YYYY-MM-DD'),
-        };
+      const formattedValues = {
+        ...values,
+        birthDate: values.birthDate?.format('YYYY-MM-DD'),
+        hireDate: values.hireDate?.format('YYYY-MM-DD'),
+      };
 
-        if (editingLegacyEmployee) {
-          setLegacyEmployees(prev =>
-            prev.map(e => (e.id === editingLegacyEmployee.id ? { ...e, ...formattedValues } : e))
-          );
-          message.success('更新员工成功');
-        } else {
-          const newLegacyEmployee: LegacyEmployee = {
-            id: Math.max(...employees.map(e => e.id)) + 1,
-            ...formattedValues,
-            status: 1,
-          };
-          setLegacyEmployees(prev => [...prev, newLegacyEmployee]);
-          message.success('创建员工成功');
-        }
-        handleCloseModal();
-        setLoading(false);
-      }, 500);
-    } catch (error) {
-      console.error(error);
+      if (editingLegacyEmployee) {
+        await employeeApi.update(editingLegacyEmployee.id, formattedValues);
+        message.success('更新员工成功');
+      } else {
+        await employeeApi.create({ ...formattedValues, status: 1 });
+        message.success('创建员工成功');
+      }
+      handleCloseModal();
+      loadLegacyEmployees();
+    } catch (error: any) {
+      if (error?.response?.data?.message) {
+        message.error(error.response.data.message);
+      } else if (error?.message) {
+        // form validation error, ignore
+      } else {
+        message.error('操作失败');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   // 删除员工
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     setLoading(true);
-    setTimeout(() => {
-      setLegacyEmployees(prev => prev.filter(e => e.id !== id));
+    try {
+      await employeeApi.delete(id);
       message.success('删除员工成功');
+      loadLegacyEmployees();
+    } catch (err) {
+      message.error('删除员工失败');
+    } finally {
       setLoading(false);
-    }, 300);
+    }
   };
 
   // 获取性别显示文本
@@ -357,12 +316,7 @@ export default function LegacyEmployeesPage() {
                 style={{ width: '100%' }}
                 value={searchParams.deptId}
                 onChange={(value) => setSearchParams(prev => ({ ...prev, deptId: value }))}
-                options={[
-                  { value: 2, label: '技术部' },
-                  { value: 3, label: '产品部' },
-                  { value: 4, label: '人力资源部' },
-                  { value: 5, label: '财务部' },
-                ]}
+                options={deptOptions}
               />
             </Col>
             <Col span={4}>
@@ -399,9 +353,16 @@ export default function LegacyEmployeesPage() {
           loading={loading}
           scroll={{ x: 1200 }}
           pagination={{
+            current: currentPage,
+            pageSize: pageSize,
+            total: total,
             showSizeChanger: true,
             showQuickJumper: true,
-            showTotal: (total) => `共 ${total} 条`,
+            showTotal: (t) => `共 ${t} 条`,
+            onChange: (page, size) => {
+              setCurrentPage(page);
+              setPageSize(size);
+            },
           }}
         />
       </Card>
@@ -492,12 +453,7 @@ export default function LegacyEmployeesPage() {
               >
                 <Select
                   placeholder="请选择部门"
-                  options={[
-                    { value: 2, label: '技术部' },
-                    { value: 3, label: '产品部' },
-                    { value: 4, label: '人力资源部' },
-                    { value: 5, label: '财务部' },
-                  ]}
+                  options={deptOptions}
                 />
               </Form.Item>
             </Col>

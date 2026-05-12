@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Table,
@@ -35,28 +35,11 @@ import {
   CloseCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { purchaseOrderApi } from '@/lib/api/supply';
+import type { PurchaseOrderDTO } from '@/lib/api/supply';
 
-// 模拟采购订单数据
-const mockPurchaseOrders = [
-  { id: 1, poNumber: '45000001', poType: 'NB', vendorCode: 'V001', vendorName: '华东钢铁集团', purchasingOrg: '1000', purchasingGroup: '001', companyCode: '1000', currency: 'CNY', documentDate: '2026-03-10', validFrom: '2026-03-10', validTo: '2026-06-30', totalNetValue: 256000, totalTaxAmount: 33280, totalGrossValue: 289280, status: '2', releaseStatus: '2', items: [
-    { poItem: 10, materialCode: 'ROH-001', shortText: '冷轧钢板 Q235B', quantity: 5000, unit: 'KG', price: 32.00, netValue: 160000, taxCode: 'V1', taxAmount: 20800, plantCode: '1000', slocCode: '0001', deliveryDate: '2026-03-25', quantityDelivered: 5000, quantityInvoiced: 5000, itemCategory: '0' },
-    { poItem: 20, materialCode: 'ROH-002', shortText: '不锈钢管 304', quantity: 2000, unit: 'KG', price: 48.00, netValue: 96000, taxCode: 'V1', taxAmount: 12480, plantCode: '1000', slocCode: '0001', deliveryDate: '2026-03-28', quantityDelivered: 2000, quantityInvoiced: 1000, itemCategory: '0' },
-  ]},
-  { id: 2, poNumber: '45000002', poType: 'NB', vendorCode: 'V002', vendorName: '深圳电子科技', purchasingOrg: '1000', purchasingGroup: '002', companyCode: '1000', currency: 'CNY', documentDate: '2026-03-12', validFrom: '2026-03-12', validTo: '2026-09-30', totalNetValue: 128000, totalTaxAmount: 16640, totalGrossValue: 144640, status: '2', releaseStatus: '2', items: [
-    { poItem: 10, materialCode: 'HALB-001', shortText: 'PCB电路板 A型', quantity: 1000, unit: 'PCS', price: 85.00, netValue: 85000, taxCode: 'V1', taxAmount: 11050, plantCode: '2000', slocCode: '0001', deliveryDate: '2026-03-30', quantityDelivered: 600, quantityInvoiced: 0, itemCategory: '0' },
-    { poItem: 20, materialCode: 'HALB-002', shortText: '电源模块 DC-12V', quantity: 500, unit: 'PCS', price: 86.00, netValue: 43000, taxCode: 'V1', taxAmount: 5590, plantCode: '2000', slocCode: '0001', deliveryDate: '2026-04-05', quantityDelivered: 0, quantityInvoiced: 0, itemCategory: '0' },
-  ]},
-  { id: 3, poNumber: '45000003', poType: 'NB', vendorCode: 'V003', vendorName: '北京精密机械', purchasingOrg: '1000', purchasingGroup: '001', companyCode: '1000', currency: 'CNY', documentDate: '2026-03-14', validFrom: '2026-03-14', validTo: '2026-12-31', totalNetValue: 580000, totalTaxAmount: 75400, totalGrossValue: 655400, status: '1', releaseStatus: '1', items: [
-    { poItem: 10, materialCode: 'FERT-001', shortText: '精密轴承 6205-2RS', quantity: 2000, unit: 'PCS', price: 145.00, netValue: 290000, taxCode: 'V1', taxAmount: 37700, plantCode: '1000', slocCode: '0002', deliveryDate: '2026-04-10', quantityDelivered: 0, quantityInvoiced: 0, itemCategory: '0' },
-    { poItem: 20, materialCode: 'FERT-002', shortText: '伺服电机 SM-750W', quantity: 100, unit: 'PCS', price: 2900.00, netValue: 290000, taxCode: 'V1', taxAmount: 37700, plantCode: '1000', slocCode: '0002', deliveryDate: '2026-04-15', quantityDelivered: 0, quantityInvoiced: 0, itemCategory: '0' },
-  ]},
-  { id: 4, poNumber: '45000004', poType: 'NB', vendorCode: 'V001', vendorName: '华东钢铁集团', purchasingOrg: '1000', purchasingGroup: '001', companyCode: '1000', currency: 'CNY', documentDate: '2026-03-15', validFrom: '2026-03-15', validTo: '2026-06-30', totalNetValue: 78000, totalTaxAmount: 10140, totalGrossValue: 88140, status: '0', releaseStatus: '0', items: [
-    { poItem: 10, materialCode: 'ROH-003', shortText: '铝合金型材 6063', quantity: 3000, unit: 'KG', price: 26.00, netValue: 78000, taxCode: 'V1', taxAmount: 10140, plantCode: '1000', slocCode: '0001', deliveryDate: '2026-04-20', quantityDelivered: 0, quantityInvoiced: 0, itemCategory: '0' },
-  ]},
-  { id: 5, poNumber: '45000005', poType: 'UB', vendorCode: 'V004', vendorName: '苏州包装材料', purchasingOrg: '1000', purchasingGroup: '003', companyCode: '1000', currency: 'CNY', documentDate: '2026-03-16', validFrom: '2026-03-16', validTo: '2026-06-30', totalNetValue: 35000, totalTaxAmount: 4550, totalGrossValue: 39550, status: '2', releaseStatus: '2', items: [
-    { poItem: 10, materialCode: 'VERP-001', shortText: '瓦楞纸箱 50x40x30', quantity: 5000, unit: 'PCS', price: 7.00, netValue: 35000, taxCode: 'V1', taxAmount: 4550, plantCode: '1000', slocCode: '0003', deliveryDate: '2026-03-25', quantityDelivered: 5000, quantityInvoiced: 5000, itemCategory: '0' },
-  ]},
-];
+// Default tenant ID
+const DEFAULT_TENANT_ID = 1;
 
 // 供应商
 const mockVendors = [
@@ -69,11 +52,14 @@ const mockVendors = [
 
 export default function PurchaseOrdersPage() {
   const [loading, setLoading] = useState(false);
-  const [orders, setOrders] = useState(mockPurchaseOrders);
+  const [orders, setOrders] = useState<PurchaseOrderDTO[]>([]);
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [activeTab, setActiveTab] = useState('all');
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<typeof mockPurchaseOrders[0] | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<PurchaseOrderDTO | null>(null);
   const [form] = Form.useForm();
 
   // 状态配置
@@ -90,6 +76,31 @@ export default function PurchaseOrdersPage() {
     'ZCON': '合同采购',
   };
 
+  const fetchOrders = useCallback(async (page = currentPage, size = pageSize, status?: string) => {
+    try {
+      setLoading(true);
+      const res = await purchaseOrderApi.getPage({
+        tenantId: DEFAULT_TENANT_ID,
+        status,
+        current: page,
+        size,
+      });
+      if (res.success && res.data) {
+        setOrders(res.data.records);
+        setTotal(res.data.total);
+      }
+    } catch (error) {
+      console.error('Failed to fetch purchase orders:', error);
+      message.error('获取采购订单失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pageSize]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // 按状态筛选
   const filteredOrders = activeTab === 'all' ? orders : orders.filter(o => {
     if (activeTab === 'draft') return o.status === '0';
@@ -103,7 +114,7 @@ export default function PurchaseOrdersPage() {
   const orderColumns = [
     {
       title: '采购订单号', dataIndex: 'poNumber', key: 'poNumber', width: 130, fixed: 'left' as const,
-      render: (text: string, record) => (
+      render: (text: string, record: any) => (
         <a onClick={() => { setSelectedOrder(record); setDetailModalVisible(true); }}>{text}</a>
       ),
     },
@@ -129,20 +140,44 @@ export default function PurchaseOrdersPage() {
     },
     {
       title: '操作', key: 'action', width: 200, fixed: 'right' as const,
-      render: (_: unknown, record) => (
+      render: (_: unknown, record: any) => (
         <Space size="small">
           <Button type="link" size="small" onClick={() => { setSelectedOrder(record); setDetailModalVisible(true); }}>详情</Button>
           {record.status === '0' && (
             <>
               <Button type="link" size="small" icon={<EditOutlined />}>编辑</Button>
-              <Popconfirm title="确定提交审批？">
+              <Popconfirm title="确定提交审批？" onConfirm={async () => {
+                try {
+                  const res = await purchaseOrderApi.submit(record.id);
+                  if (res.success) {
+                    message.success('提交成功');
+                    fetchOrders();
+                  } else {
+                    message.error(res.message || '提交失败');
+                  }
+                } catch {
+                  message.error('提交失败');
+                }
+              }}>
                 <Button type="link" size="small" icon={<SendOutlined />} style={{ color: '#faad14' }}>提交</Button>
               </Popconfirm>
             </>
           )}
           {record.status === '1' && (
             <>
-              <Button type="link" size="small" icon={<CheckOutlined />} style={{ color: '#52c41a' }}>审批</Button>
+              <Button type="link" size="small" icon={<CheckOutlined />} style={{ color: '#52c41a' }} onClick={async () => {
+                try {
+                  const res = await purchaseOrderApi.approve(record.id, 'current_user');
+                  if (res.success) {
+                    message.success('审批成功');
+                    fetchOrders();
+                  } else {
+                    message.error(res.message || '审批失败');
+                  }
+                } catch {
+                  message.error('审批失败');
+                }
+              }}>审批</Button>
               <Button type="link" size="small" danger icon={<CloseCircleOutlined />}>拒绝</Button>
             </>
           )}
@@ -159,7 +194,14 @@ export default function PurchaseOrdersPage() {
     totalOrders: orders.length,
     pendingApproval: orders.filter(o => o.status === '1').length,
     totalValue: orders.reduce((s, o) => s + o.totalNetValue, 0),
-    goodsReceived: orders.filter(o => o.items.some(i => i.quantityDelivered > 0)).length,
+    goodsReceived: orders.filter(o => o.items?.some(i => i.quantityDelivered > 0)).length,
+  };
+
+  const handleTabChange = (key: string) => {
+    setActiveTab(key);
+    setCurrentPage(1);
+    const status = key === 'all' ? undefined : key === 'draft' ? '0' : key === 'pending' ? '1' : key === 'approved' ? '2' : key === 'closed' ? '3' : undefined;
+    fetchOrders(1, pageSize, status);
   };
 
   return (
@@ -167,7 +209,7 @@ export default function PurchaseOrdersPage() {
       <Card title="采购订单管理 (对标 SAP ME21N/ME22N/ME23N)"
         extra={
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => setLoading(!loading)}>刷新</Button>
+            <Button icon={<ReloadOutlined />} onClick={() => fetchOrders()}>刷新</Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)}>
               新建采购订单
             </Button>
@@ -176,7 +218,7 @@ export default function PurchaseOrdersPage() {
       >
         <Tabs
           activeKey={activeTab}
-          onChange={setActiveTab}
+          onChange={handleTabChange}
           items={[
             { key: 'all', label: <><ShoppingCartOutlined /> 全部订单</> },
             { key: 'draft', label: '草稿' },
@@ -223,7 +265,7 @@ export default function PurchaseOrdersPage() {
               options={Object.entries(statusConfig).map(([k, v]) => ({ value: k, label: v.text }))} />
           </Form.Item>
           <Form.Item>
-            <Button type="primary" icon={<SearchOutlined />}>查询</Button>
+            <Button type="primary" icon={<SearchOutlined />} onClick={() => fetchOrders(1)}>查询</Button>
           </Form.Item>
         </Form>
 
@@ -235,7 +277,17 @@ export default function PurchaseOrdersPage() {
           loading={loading}
           size="small"
           scroll={{ x: 1200 }}
-          pagination={{ defaultPageSize: 20, showSizeChanger: true }}
+          pagination={{
+            current: currentPage,
+            pageSize,
+            total,
+            showSizeChanger: true,
+            onChange: (page, size) => {
+              setCurrentPage(page);
+              setPageSize(size);
+              fetchOrders(page, size);
+            },
+          }}
         />
       </Card>
 
@@ -244,7 +296,7 @@ export default function PurchaseOrdersPage() {
         title="新建采购订单"
         open={createModalVisible}
         onCancel={() => setCreateModalVisible(false)}
-        onOk={() => { message.success('采购订单创建成功'); setCreateModalVisible(false); }}
+        onOk={() => { message.success('采购订单创建成功'); setCreateModalVisible(false); fetchOrders(); }}
         width={900}
       >
         <Form layout="vertical">

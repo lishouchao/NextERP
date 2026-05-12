@@ -1,5 +1,8 @@
 package com.nexterp.business.sales.controller;
 
+import com.nexterp.business.sales.application.service.SdBillingService;
+import com.nexterp.business.sales.dto.BillingDTO;
+import com.nexterp.business.sales.dto.CreateBillingRequest;
 import com.nexterp.shared.core.result.PageResult;
 import com.nexterp.shared.core.result.Result;
 import jakarta.validation.Valid;
@@ -7,9 +10,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Collections;
-import java.util.Map;
 
 /**
  * 开票控制器
@@ -22,6 +22,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SdBillingController {
 
+    private final SdBillingService billingService;
+
     /**
      * 分页查询开票单
      *
@@ -33,20 +35,13 @@ public class SdBillingController {
      */
     @GetMapping
     @PreAuthorize("hasAuthority('sd:billing:view')")
-    public Result<PageResult<Map<String, Object>>> listBillings(
+    public Result<PageResult<BillingDTO>> listBillings(
             @RequestParam Long tenantId,
             @RequestParam(required = false) String billingStatus,
             @RequestParam(defaultValue = "1") int current,
             @RequestParam(defaultValue = "10") int size) {
         log.info("查询开票单列表, tenantId={}, billingStatus={}, current={}, size={}", tenantId, billingStatus, current, size);
-        // TODO: 调用开票服务
-        PageResult<Map<String, Object>> pageResult = PageResult.<Map<String, Object>>builder()
-                .records(Collections.emptyList())
-                .total(0L)
-                .current(current)
-                .size(size)
-                .build();
-        return Result.success(pageResult);
+        return Result.success(billingService.listBillings(tenantId, billingStatus, current, size));
     }
 
     /**
@@ -57,10 +52,9 @@ public class SdBillingController {
      */
     @PostMapping
     @PreAuthorize("hasAuthority('sd:billing:add')")
-    public Result<Long> createBilling(@Valid @RequestBody Map<String, Object> request) {
+    public Result<Long> createBilling(@Valid @RequestBody CreateBillingRequest request) {
         log.info("创建开票单");
-        // TODO: 调用开票服务
-        return Result.success(1L);
+        return Result.success(billingService.createBilling(request));
     }
 
     /**
@@ -71,10 +65,9 @@ public class SdBillingController {
      */
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('sd:billing:view')")
-    public Result<Map<String, Object>> getBillingById(@PathVariable Long id) {
+    public Result<BillingDTO> getBillingById(@PathVariable Long id) {
         log.info("获取开票单详情, id={}", id);
-        // TODO: 调用开票服务
-        return Result.success(Map.of("id", id));
+        return Result.success(billingService.getBillingById(id));
     }
 
     /**
@@ -86,12 +79,12 @@ public class SdBillingController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('sd:billing:edit')")
-    public Result<Map<String, Object>> updateBilling(
+    public Result<Void> updateBilling(
             @PathVariable Long id,
-            @Valid @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody CreateBillingRequest request) {
         log.info("更新开票单, id={}", id);
-        // TODO: 调用开票服务
-        return Result.success(Map.of("id", id));
+        billingService.updateBilling(id, request);
+        return Result.success();
     }
 
     /**
@@ -104,7 +97,7 @@ public class SdBillingController {
     @PreAuthorize("hasAuthority('sd:billing:edit')")
     public Result<Void> postBilling(@PathVariable Long id) {
         log.info("开票单过账, id={}", id);
-        // TODO: 调用开票服务
+        billingService.postBilling(id);
         return Result.success();
     }
 
@@ -118,7 +111,7 @@ public class SdBillingController {
     @PreAuthorize("hasAuthority('sd:billing:edit')")
     public Result<Void> cancelBilling(@PathVariable Long id) {
         log.info("取消开票单, id={}", id);
-        // TODO: 调用开票服务
+        billingService.cancelBilling(id);
         return Result.success();
     }
 
@@ -130,9 +123,8 @@ public class SdBillingController {
      */
     @PostMapping("/preview")
     @PreAuthorize("hasAuthority('sd:billing:view')")
-    public Result<Map<String, Object>> previewBilling(@RequestParam Long deliveryId) {
+    public Result<BillingDTO> previewBilling(@RequestParam Long deliveryId) {
         log.info("开票预览, deliveryId={}", deliveryId);
-        // TODO: 调用开票服务
-        return Result.success(Map.of("deliveryId", deliveryId, "preview", true));
+        return Result.success(billingService.previewBilling(deliveryId));
     }
 }

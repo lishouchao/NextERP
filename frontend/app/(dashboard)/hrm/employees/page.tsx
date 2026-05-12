@@ -49,7 +49,7 @@ export default function EmployeesPage() {
 
   const columns = [
     { title: '工号', dataIndex: 'empNo', width: 90, fixed: 'left' as const },
-    { title: '姓名', dataIndex: 'name', width: 100, render: (text: string, r) => (
+    { title: '姓名', dataIndex: 'name', width: 100, render: (text: string, r: any) => (
       <Space><Avatar size="small" icon={<UserOutlined />} style={{ backgroundColor: r.gender === 'M' ? '#1890ff' : '#eb2f96' }} />
         <a onClick={() => { setSelected(r); setDetailVisible(true); }}>{text}</a></Space>
     )},
@@ -61,7 +61,7 @@ export default function EmployeesPage() {
     { title: '入职日期', dataIndex: 'hireDate', width: 100 },
     { title: '工龄', dataIndex: 'workYears', width: 70, render: (v: number) => `${v}年` },
     { title: '状态', dataIndex: 'status', width: 80, render: (s: number) => <Tag color={statusConfig[s]?.color}>{statusConfig[s]?.text}</Tag> },
-    { title: '操作', key: 'action', width: 150, fixed: 'right' as const, render: (_: unknown, r) => (
+    { title: '操作', key: 'action', width: 150, fixed: 'right' as const, render: (_: unknown, r: any) => (
       <Space size="small">
         <Button type="link" size="small" onClick={() => { setSelected(r); setDetailVisible(true); }}>详情</Button>
         <Button type="link" size="small" icon={<EditOutlined />}>编辑</Button>

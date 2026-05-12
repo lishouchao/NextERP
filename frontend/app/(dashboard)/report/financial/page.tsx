@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { apiClient } from '@/lib/api/client';
+import api from '@/lib/api/client';
 
 interface ReportData {
   reportDate: string;
@@ -30,7 +30,7 @@ export default function FinancialReportPage() {
     setLoading(true);
     try {
       const tenantId = localStorage.getItem('tenantId') || '1';
-      const response = await apiClient.get(`/report/v1/financial/${reportType}`, {
+      const response = await api.get(`/report/v1/financial/${reportType}`, {
         params: { tenantId, period }
       });
       setReportData(response.data);
@@ -50,7 +50,7 @@ export default function FinancialReportPage() {
 
     try {
       const tenantId = localStorage.getItem('tenantId') || '1';
-      const response = await apiClient.post(`/report/v1/financial/export`, {
+      const response = await api.post(`/report/v1/financial/export`, {
         reportType,
         tenantId,
         period
@@ -164,7 +164,7 @@ export default function FinancialReportPage() {
 
       {!reportData && (
         <div className="bg-white rounded-lg shadow p-12 text-center text-gray-500">
-          请选择报表类型和会计期间，点击"生成报表"按钮
+          请选择报表类型和会计期间，点击&ldquo;生成报表&rdquo;按钮
         </div>
       )}
     </div>

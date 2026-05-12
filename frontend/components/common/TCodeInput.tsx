@@ -75,7 +75,7 @@ export default function TCodeSearch({ style, className }: TCodeSearchProps) {
       const historyOptions = history
         .map(code => findTCode(code))
         .filter(Boolean)
-        .map((tcode: TCode) => ({
+        .map((tcode: any) => ({
           value: tcode.code,
           label: (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>

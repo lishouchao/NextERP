@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Table,
@@ -37,28 +37,13 @@ import {
   PauseCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { productionOrderApi, operationRecordApi } from '@/lib/api/production';
+import type { ProProductionOrderDTO, ProOperationRecordDTO } from '@/lib/api/production';
 
 const { RangePicker } = DatePicker;
 
-// 模拟生产工单数据
-const mockProductionOrders = [
-  { id: 1, orderNo: 'WO-2023-001', productCode: 'PROD-001', productName: '产品A', quantity: 1000, completedQty: 1000, unit: 'PCS', plannedStart: '2023-12-10', plannedEnd: '2023-12-15', actualStart: '2023-12-10', actualEnd: '2023-12-14', status: 4, priority: 1, workshop: '车间A', workCenter: 'WC-01', createdBy: '计划员A', confirmedBy: '班组长B', confirmedAt: '2023-12-14' },
-  { id: 2, orderNo: 'WO-2023-002', productCode: 'PROD-002', productName: '产品B', quantity: 500, completedQty: 350, unit: 'PCS', plannedStart: '2023-12-12', plannedEnd: '2023-12-18', actualStart: '2023-12-12', actualEnd: null, status: 3, priority: 2, workshop: '车间A', workCenter: 'WC-02', createdBy: '计划员A', confirmedBy: null, confirmedAt: null },
-  { id: 3, orderNo: 'WO-2023-003', productCode: 'PROD-004', productName: '产品D', quantity: 200, completedQty: 0, unit: 'PCS', plannedStart: '2023-12-15', plannedEnd: '2023-12-20', actualStart: null, actualEnd: null, status: 2, priority: 2, workshop: '车间B', workCenter: 'WC-03', createdBy: '计划员B', confirmedBy: null, confirmedAt: null },
-  { id: 4, orderNo: 'WO-2023-004', productCode: 'PROD-001', productName: '产品A', quantity: 800, completedQty: 0, unit: 'PCS', plannedStart: '2023-12-18', plannedEnd: '2023-12-22', actualStart: null, actualEnd: null, status: 1, priority: 3, workshop: '车间A', workCenter: 'WC-01', createdBy: '计划员A', confirmedBy: null, confirmedAt: null },
-  { id: 5, orderNo: 'WO-2023-005', productCode: 'PROD-003', productName: '配件C', quantity: 2000, completedQty: 0, unit: 'SET', plannedStart: '2023-12-20', plannedEnd: '2023-12-25', actualStart: null, actualEnd: null, status: 0, priority: 3, workshop: '车间B', workCenter: 'WC-04', createdBy: '计划员B', confirmedBy: null, confirmedAt: null },
-  { id: 6, orderNo: 'WO-2023-006', productCode: 'PROD-002', productName: '产品B', quantity: 300, completedQty: 300, unit: 'PCS', plannedStart: '2023-12-08', plannedEnd: '2023-12-12', actualStart: '2023-12-08', actualEnd: '2023-12-11', status: 5, priority: 1, workshop: '车间A', workCenter: 'WC-02', createdBy: '计划员A', confirmedBy: '班组长B', confirmedAt: '2023-12-11' },
-];
-
-// 工序数据
-const mockOperations = [
-  { id: 1, orderId: 1, seq: 10, name: '下料', workCenter: 'WC-01', setupTime: 30, runTime: 120, status: 'complete', completedQty: 1000, startTime: '2023-12-10 08:00', endTime: '2023-12-10 12:00' },
-  { id: 2, orderId: 1, seq: 20, name: '加工', workCenter: 'WC-02', setupTime: 20, runTime: 240, status: 'complete', completedQty: 1000, startTime: '2023-12-10 13:00', endTime: '2023-12-11 18:00' },
-  { id: 3, orderId: 1, seq: 30, name: '装配', workCenter: 'WC-03', setupTime: 15, runTime: 180, status: 'complete', completedQty: 1000, startTime: '2023-12-12 08:00', endTime: '2023-12-13 17:00' },
-  { id: 4, orderId: 1, seq: 40, name: '检验', workCenter: 'QC-01', setupTime: 10, runTime: 60, status: 'complete', completedQty: 1000, startTime: '2023-12-14 08:00', endTime: '2023-12-14 10:00' },
-  { id: 5, orderId: 2, seq: 10, name: '下料', workCenter: 'WC-01', setupTime: 20, runTime: 80, status: 'complete', completedQty: 500, startTime: '2023-12-12 08:00', endTime: '2023-12-12 11:00' },
-  { id: 6, orderId: 2, seq: 20, name: '加工', workCenter: 'WC-02', setupTime: 15, runTime: 160, status: 'in_progress', completedQty: 350, startTime: '2023-12-12 13:00', endTime: null },
-];
+// Default tenant ID
+const DEFAULT_TENANT_ID = 1;
 
 // 产品数据
 const mockProducts = [
@@ -70,12 +55,16 @@ const mockProducts = [
 
 export default function ProductionOrdersPage() {
   const [loading, setLoading] = useState(false);
-  const [orders, setOrders] = useState(mockProductionOrders);
+  const [orders, setOrders] = useState<ProProductionOrderDTO[]>([]);
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [activeTab, setActiveTab] = useState('all');
   const [orderModalVisible, setOrderModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<typeof mockProductionOrders[0] | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<ProProductionOrderDTO | null>(null);
+  const [orderOperations, setOrderOperations] = useState<ProOperationRecordDTO[]>([]);
   const [form] = Form.useForm();
 
   // 状态配置
@@ -96,6 +85,31 @@ export default function ProductionOrdersPage() {
     3: { color: 'default', text: '低' },
   };
 
+  const fetchOrders = useCallback(async (page = currentPage, size = pageSize, status?: number) => {
+    try {
+      setLoading(true);
+      const res = await productionOrderApi.getPage({
+        tenantId: DEFAULT_TENANT_ID,
+        status,
+        current: page,
+        size,
+      });
+      if (res.success && res.data) {
+        setOrders(res.data.records);
+        setTotal(res.data.total);
+      }
+    } catch (error) {
+      console.error('Failed to fetch production orders:', error);
+      message.error('获取生产工单失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pageSize]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // 按状态筛选
   const filteredOrders = activeTab === 'all' ? orders : orders.filter(o => {
     if (activeTab === 'released') return o.status === 1;
@@ -107,17 +121,17 @@ export default function ProductionOrdersPage() {
   // 生产工单列
   const columns = [
     { title: '工单号', dataIndex: 'orderNo', key: 'orderNo', width: 120, fixed: 'left' as const,
-      render: (text: string, record) => (
+      render: (text: string, record: any) => (
         <a onClick={() => { setSelectedOrder(record); setDetailModalVisible(true); }}>{text}</a>
       ),
     },
     { title: '产品编码', dataIndex: 'productCode', key: 'productCode', width: 100 },
     { title: '产品名称', dataIndex: 'productName', key: 'productName', width: 100 },
     { title: '计划数量', dataIndex: 'quantity', key: 'quantity', width: 100, align: 'right' as const,
-      render: (v: number, r) => `${v} ${r.unit}`,
+      render: (v: number, r: any) => `${v} ${r.unit}`,
     },
     { title: '完成数量', dataIndex: 'completedQty', key: 'completedQty', width: 100, align: 'right' as const,
-      render: (v: number, r) => {
+      render: (v: number, r: any) => {
         const percent = (v / r.quantity) * 100;
         return (
           <Tooltip title={`${v}/${r.quantity} (${percent.toFixed(1)}%)`}>
@@ -128,7 +142,7 @@ export default function ProductionOrdersPage() {
     },
     { title: '计划开始', dataIndex: 'plannedStart', key: 'plannedStart', width: 100 },
     { title: '计划结束', dataIndex: 'plannedEnd', key: 'plannedEnd', width: 100,
-      render: (date: string, record) => {
+      render: (date: string, record: any) => {
         const isOverdue = dayjs(date).isBefore(dayjs(), 'day') && record.status < 4;
         return <span style={{ color: isOverdue ? '#ff4d4f' : 'inherit' }}>{date}</span>;
       },
@@ -148,7 +162,7 @@ export default function ProductionOrdersPage() {
       },
     },
     { title: '操作', key: 'action', width: 200, fixed: 'right' as const,
-      render: (_: unknown, record) => (
+      render: (_: unknown, record: any) => (
         <Space size="small">
           <Button type="link" size="small" onClick={() => { setSelectedOrder(record); setDetailModalVisible(true); }}>详情</Button>
           {record.status === 0 && (
@@ -158,7 +172,19 @@ export default function ProductionOrdersPage() {
             </>
           )}
           {record.status === 1 && (
-            <Button type="link" size="small" icon={<PlayCircleOutlined />} style={{ color: '#52c41a' }}>开工</Button>
+            <Button type="link" size="small" icon={<PlayCircleOutlined />} style={{ color: '#52c41a' }} onClick={async () => {
+              try {
+                const res = await productionOrderApi.start(record.id);
+                if (res.success) {
+                  message.success('工单已开工');
+                  fetchOrders();
+                } else {
+                  message.error(res.message || '开工失败');
+                }
+              } catch {
+                message.error('开工失败');
+              }
+            }}>开工</Button>
           )}
           {record.status === 3 && (
             <Button type="link" size="small" icon={<CheckOutlined />} style={{ color: '#1890ff' }}>报工</Button>
@@ -178,12 +204,33 @@ export default function ProductionOrdersPage() {
     completedQty: orders.reduce((s, o) => s + o.completedQty, 0),
   };
 
+  const handleTabChange = (key: string) => {
+    setActiveTab(key);
+    setCurrentPage(1);
+    const status = key === 'all' ? undefined : key === 'released' ? 1 : key === 'in_progress' ? 3 : key === 'completed' ? 4 : undefined;
+    fetchOrders(1, pageSize, status);
+  };
+
+  const handleViewDetail = async (record: ProProductionOrderDTO) => {
+    setSelectedOrder(record);
+    setDetailModalVisible(true);
+    // Fetch operations for this order
+    try {
+      const res = await operationRecordApi.getByOrderId(record.id);
+      if (res.success && res.data) {
+        setOrderOperations(res.data);
+      }
+    } catch {
+      setOrderOperations([]);
+    }
+  };
+
   return (
     <div style={{ padding: 24 }}>
       <Card title="生产工单管理 (对标 SAP CO01/CO02/CO03)"
         extra={
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => setLoading(!loading)}>刷新</Button>
+            <Button icon={<ReloadOutlined />} onClick={() => fetchOrders()}>刷新</Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setOrderModalVisible(true)}>
               新建工单
             </Button>
@@ -192,7 +239,7 @@ export default function ProductionOrdersPage() {
       >
         <Tabs
           activeKey={activeTab}
-          onChange={setActiveTab}
+          onChange={handleTabChange}
           items={[
             { key: 'all', label: <><ToolOutlined /> 全部工单</> },
             { key: 'released', label: <>已下达</> },
@@ -270,7 +317,17 @@ export default function ProductionOrdersPage() {
           loading={loading}
           size="small"
           scroll={{ x: 1400 }}
-          pagination={{ defaultPageSize: 20, showSizeChanger: true }}
+          pagination={{
+            current: currentPage,
+            pageSize,
+            total,
+            showSizeChanger: true,
+            onChange: (page, size) => {
+              setCurrentPage(page);
+              setPageSize(size);
+              fetchOrders(page, size);
+            },
+          }}
         />
       </Card>
 
@@ -279,7 +336,7 @@ export default function ProductionOrdersPage() {
         title="新建生产工单"
         open={orderModalVisible}
         onCancel={() => setOrderModalVisible(false)}
-        onOk={() => { message.success('工单创建成功'); setOrderModalVisible(false); }}
+        onOk={() => { message.success('工单创建成功'); setOrderModalVisible(false); fetchOrders(); }}
         width={800}
       >
         <Form layout="vertical">
@@ -356,11 +413,11 @@ export default function ProductionOrdersPage() {
       <Modal
         title={`工单详情 - ${selectedOrder?.orderNo}`}
         open={detailModalVisible}
-        onCancel={() => { setDetailModalVisible(false); setSelectedOrder(null); }}
+        onCancel={() => { setDetailModalVisible(false); setSelectedOrder(null); setOrderOperations([]); }}
         footer={[
           <Button key="print">打印</Button>,
           selectedOrder?.status === 3 && <Button key="confirm" type="primary" icon={<CheckOutlined />}>报工确认</Button>,
-          <Button key="close" onClick={() => { setDetailModalVisible(false); setSelectedOrder(null); }}>关闭</Button>,
+          <Button key="close" onClick={() => { setDetailModalVisible(false); setSelectedOrder(null); setOrderOperations([]); }}>关闭</Button>,
         ]}
         width={1000}
       >
@@ -414,31 +471,32 @@ export default function ProductionOrdersPage() {
             <Card title="工序明细" size="small">
               <Table
                 columns={[
-                  { title: '工序号', dataIndex: 'seq', width: 80 },
-                  { title: '工序名称', dataIndex: 'name', width: 100 },
+                  { title: '工序号', dataIndex: 'sequenceNo', width: 80 },
+                  { title: '工序名称', dataIndex: 'operationName', width: 100 },
                   { title: '工作中心', dataIndex: 'workCenter', width: 100 },
-                  { title: '准备时间', dataIndex: 'setupTime', width: 100, render: (v) => `${v} 分钟` },
-                  { title: '加工时间', dataIndex: 'runTime', width: 100, render: (v) => `${v} 分钟` },
+                  { title: '准备时间', dataIndex: 'actualManHours', width: 100, render: (v) => v ? `${v} 分钟` : '-' },
+                  { title: '加工时间', dataIndex: 'actualMachineHours', width: 100, render: (v) => v ? `${v} 分钟` : '-' },
                   { title: '完成数量', dataIndex: 'completedQty', width: 100 },
                   {
                     title: '状态', dataIndex: 'status', width: 80,
-                    render: (status: string) => {
-                      const map: Record<string, { color: string; text: string }> = {
-                        pending: { color: 'default', text: '待加工' },
-                        in_progress: { color: 'processing', text: '加工中' },
-                        complete: { color: 'green', text: '已完成' },
+                    render: (status: number) => {
+                      const map: Record<number, { color: string; text: string }> = {
+                        0: { color: 'default', text: '待加工' },
+                        1: { color: 'processing', text: '加工中' },
+                        2: { color: 'green', text: '已完成' },
                       };
-                      const s = map[status] || { color: 'default', text: status };
+                      const s = map[status] || { color: 'default', text: '未知' };
                       return <Tag color={s.color}>{s.text}</Tag>;
                     },
                   },
-                  { title: '开始时间', dataIndex: 'startTime', width: 140 },
-                  { title: '结束时间', dataIndex: 'endTime', width: 140 },
+                  { title: '开始时间', dataIndex: 'startTime', width: 140, render: (v) => v || '-' },
+                  { title: '结束时间', dataIndex: 'endTime', width: 140, render: (v) => v || '-' },
                 ]}
-                dataSource={mockOperations.filter(o => o.orderId === selectedOrder.id)}
+                dataSource={orderOperations}
                 rowKey="id"
                 size="small"
                 pagination={false}
+                locale={{ emptyText: '暂无工序记录' }}
               />
             </Card>
           </>

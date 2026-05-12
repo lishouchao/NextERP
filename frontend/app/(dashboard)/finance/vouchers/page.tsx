@@ -36,156 +36,107 @@ import {
   CopyOutlined,
   EyeOutlined,
 } from '@ant-design/icons';
-import type { FinVoucher, FinVoucherEntry } from '@/types/finance';
+import type { FinVoucher, FinVoucherEntry, FinVoucherFormData } from '@/types/finance';
 import {
   VOUCHER_TYPE_OPTIONS,
   VOUCHER_STATUS_OPTIONS,
   VOUCHER_WORD_OPTIONS,
 } from '@/types/finance';
+import { voucherApi, accountApi } from '@/lib/api/finance';
 import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
 const { TextArea } = Input;
 
-// 模拟凭证数据
-const mockVouchers: FinVoucher[] = [
-  {
-    id: 1,
-    voucherNo: '记-2023-0001',
-    voucherWord: '记',
-    voucherDate: '2023-12-01',
-    accountingPeriod: '2023-12',
-    voucherType: 3,
-    attachmentCount: 2,
-    debitAmount: 50000,
-    creditAmount: 50000,
-    createdById: 1,
-    createdByName: '张三',
-    approvedById: 2,
-    approvedByName: '李四',
-    approvedAt: '2023-12-01 10:30:00',
-    postedById: 3,
-    postedByName: '王五',
-    postedAt: '2023-12-01 14:00:00',
-    voucherStatus: 3,
-    summary: '销售产品收款',
-    sourceType: 'sales_order',
-    sourceId: 1001,
-    entries: [
-      { id: 1, voucherId: 1, lineNo: 1, accountId: 2, accountCode: '1002', accountName: '银行存款', summary: '收到销售款', debitAmount: 50000, creditAmount: 0 },
-      { id: 2, voucherId: 1, lineNo: 2, accountId: 25, accountCode: '6001', accountName: '主营业务收入', summary: '确认收入', debitAmount: 0, creditAmount: 44247.79 },
-      { id: 3, voucherId: 1, lineNo: 3, accountId: 16, accountCode: '222101', accountName: '应交增值税', summary: '销项税额', debitAmount: 0, creditAmount: 5752.21 },
-    ],
-  },
-  {
-    id: 2,
-    voucherNo: '记-2023-0002',
-    voucherWord: '记',
-    voucherDate: '2023-12-02',
-    accountingPeriod: '2023-12',
-    voucherType: 2,
-    attachmentCount: 3,
-    debitAmount: 30000,
-    creditAmount: 30000,
-    createdById: 1,
-    createdByName: '张三',
-    voucherStatus: 2,
-    summary: '采购原材料付款',
-    sourceType: 'purchase_order',
-    sourceId: 2001,
-    entries: [
-      { id: 4, voucherId: 2, lineNo: 1, accountId: 8, accountCode: '1405', accountName: '原材料', summary: '采购原材料', debitAmount: 25641.03, creditAmount: 0 },
-      { id: 5, voucherId: 2, lineNo: 2, accountId: 16, accountCode: '222101', accountName: '应交增值税', summary: '进项税额', debitAmount: 4358.97, creditAmount: 0 },
-      { id: 6, voucherId: 2, lineNo: 3, accountId: 2, accountCode: '1002', accountName: '银行存款', summary: '支付采购款', debitAmount: 0, creditAmount: 30000 },
-    ],
-  },
-  {
-    id: 3,
-    voucherNo: '记-2023-0003',
-    voucherWord: '记',
-    voucherDate: '2023-12-05',
-    accountingPeriod: '2023-12',
-    voucherType: 1,
-    attachmentCount: 1,
-    debitAmount: 100000,
-    creditAmount: 100000,
-    createdById: 1,
-    createdByName: '张三',
-    voucherStatus: 1,
-    summary: '股东投资款',
-    entries: [
-      { id: 7, voucherId: 3, lineNo: 1, accountId: 2, accountCode: '1002', accountName: '银行存款', summary: '收到投资款', debitAmount: 100000, creditAmount: 0 },
-      { id: 8, voucherId: 3, lineNo: 2, accountId: 17, accountCode: '4001', accountName: '实收资本', summary: '股东投资', debitAmount: 0, creditAmount: 100000 },
-    ],
-  },
-  {
-    id: 4,
-    voucherNo: '记-2023-0004',
-    voucherWord: '记',
-    voucherDate: '2023-12-08',
-    accountingPeriod: '2023-12',
-    voucherType: 3,
-    attachmentCount: 0,
-    debitAmount: 5000,
-    creditAmount: 5000,
-    createdById: 2,
-    createdByName: '李四',
-    voucherStatus: 0,
-    summary: '计提折旧',
-    remark: '待完善附件',
-    entries: [
-      { id: 9, voucherId: 4, lineNo: 1, accountId: 24, accountCode: '5101', accountName: '制造费用', summary: '生产设备折旧', debitAmount: 3000, creditAmount: 0 },
-      { id: 10, voucherId: 4, lineNo: 2, accountId: 29, accountCode: '6602', accountName: '管理费用', summary: '办公设备折旧', debitAmount: 2000, creditAmount: 0 },
-      { id: 11, voucherId: 4, lineNo: 3, accountId: 10, accountCode: '1601', accountName: '固定资产', summary: '累计折旧', debitAmount: 0, creditAmount: 5000 },
-    ],
-  },
-];
-
-// 模拟科目数据
-const accountOptions = [
-  { value: 1, label: '1001 库存现金', code: '1001', name: '库存现金' },
-  { value: 2, label: '1002 银行存款', code: '1002', name: '银行存款' },
-  { value: 8, label: '1405 原材料', code: '1405', name: '原材料' },
-  { value: 10, label: '1601 固定资产', code: '1601', name: '固定资产' },
-  { value: 16, label: '222101 应交增值税', code: '222101', name: '应交增值税' },
-  { value: 17, label: '4001 实收资本', code: '4001', name: '实收资本' },
-  { value: 24, label: '5101 制造费用', code: '5101', name: '制造费用' },
-  { value: 25, label: '6001 主营业务收入', code: '6001', name: '主营业务收入' },
-  { value: 29, label: '6602 管理费用', code: '6602', name: '管理费用' },
-];
-
 export default function VouchersPage() {
   const [loading, setLoading] = useState(false);
-  const [vouchers, setVouchers] = useState<FinVoucher[]>(mockVouchers);
+  const [vouchers, setVouchers] = useState<FinVoucher[]>([]);
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [modalVisible, setModalVisible] = useState(false);
   const [detailVisible, setDetailVisible] = useState(false);
   const [editingVoucher, setEditingVoucher] = useState<FinVoucher | null>(null);
   const [viewingVoucher, setViewingVoucher] = useState<FinVoucher | null>(null);
   const [form] = Form.useForm();
   const [activeTab, setActiveTab] = useState('all');
+  const [accountOptions, setAccountOptions] = useState<{ value: number; label: string; code: string; name: string }[]>([]);
   const currentUser = { id: 1, name: '张三' };
+
+  // 加载科目选项
+  const loadAccountOptions = async () => {
+    try {
+      const res = await accountApi.getList();
+      const accounts = res.data || [];
+      const options = accounts.map((a: any) => ({
+        value: a.id,
+        label: `${a.accountCode} ${a.accountName}`,
+        code: a.accountCode,
+        name: a.accountName,
+      }));
+      setAccountOptions(options);
+    } catch (err) {
+      // silently ignore
+    }
+  };
+
+  useEffect(() => {
+    loadAccountOptions();
+  }, []);
+
+  // 加载凭证数据
+  const loadVouchers = async () => {
+    setLoading(true);
+    try {
+      const params: any = {
+        current: currentPage,
+        size: pageSize,
+      };
+      // If filtering by tab, add status filter
+      if (activeTab !== 'all') {
+        const statusMap: Record<string, number> = {
+          draft: 0,
+          pending: 1,
+          approved: 2,
+          posted: 3,
+        };
+        if (statusMap[activeTab] !== undefined) {
+          params.voucherStatus = statusMap[activeTab];
+        }
+      }
+      const res = await voucherApi.getList(params);
+      const pageData = res.data;
+      if (pageData) {
+        setVouchers(pageData.records || []);
+        setTotal(pageData.total || 0);
+      }
+    } catch (err) {
+      message.error('加载凭证数据失败');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     loadVouchers();
-  }, []);
+  }, [currentPage, pageSize, activeTab]);
+
+  // View voucher detail by fetching full data
+  const handleViewDetail = async (voucher: FinVoucher) => {
+    try {
+      const res = await voucherApi.getById(voucher.id);
+      setViewingVoucher(res.data || voucher);
+      setDetailVisible(true);
+    } catch (err) {
+      // Fallback to the list item data
+      setViewingVoucher(voucher);
+      setDetailVisible(true);
+    }
+  };
 
   const filteredVouchers = useMemo(() => {
-    switch (activeTab) {
-      case 'draft': return vouchers.filter((v) => v.voucherStatus === 0);
-      case 'pending': return vouchers.filter((v) => v.voucherStatus === 1);
-      case 'approved': return vouchers.filter((v) => v.voucherStatus === 2);
-      case 'posted': return vouchers.filter((v) => v.voucherStatus === 3);
-      default: return vouchers;
-    }
-  }, [vouchers, activeTab]);
-
-  const loadVouchers = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setVouchers(mockVouchers);
-      setLoading(false);
-    }, 300);
-  };
+    return vouchers;
+  }, [vouchers]);
 
   const getStatusTag = (status: number) => {
     const option = VOUCHER_STATUS_OPTIONS.find((o) => o.value === status);
@@ -240,142 +191,119 @@ export default function VouchersPage() {
       }
 
       setLoading(true);
-      setTimeout(() => {
-        if (editingVoucher) {
-          setVouchers((prev) =>
-            prev.map((v) =>
-              v.id === editingVoucher.id
-                ? {
-                    ...v,
-                    ...values,
-                    voucherDate: values.voucherDate.format('YYYY-MM-DD'),
-                    accountingPeriod: values.voucherDate.format('YYYY-MM'),
-                    debitAmount,
-                    creditAmount,
-                    entries: entries.map((e: any, idx: number) => {
-                      const acc = accountOptions.find((a) => a.value === e.accountId);
-                      return {
-                        id: Date.now() + idx,
-                        voucherId: v.id,
-                        lineNo: idx + 1,
-                        accountId: e.accountId,
-                        accountCode: acc?.code || '',
-                        accountName: acc?.name || '',
-                        summary: e.summary,
-                        debitAmount: e.debitAmount || 0,
-                        creditAmount: e.creditAmount || 0,
-                      };
-                    }),
-                  }
-                : v
-            )
-          );
-          message.success('更新凭证成功');
-        } else {
-          const newVoucher: FinVoucher = {
-            id: Math.max(...vouchers.map((v) => v.id)) + 1,
-            voucherNo: `记-2023-${String(vouchers.length + 1).padStart(4, '0')}`,
-            ...values,
-            voucherDate: values.voucherDate.format('YYYY-MM-DD'),
-            accountingPeriod: values.voucherDate.format('YYYY-MM'),
-            debitAmount,
-            creditAmount,
-            createdById: currentUser.id,
-            createdByName: currentUser.name,
-            voucherStatus: 0,
-            entries: entries.map((e: any, idx: number) => {
-              const acc = accountOptions.find((a) => a.value === e.accountId);
-              return {
-                id: Date.now() + idx,
-                voucherId: Math.max(...vouchers.map((v) => v.id)) + 1,
-                lineNo: idx + 1,
-                accountId: e.accountId,
-                accountCode: acc?.code || '',
-                accountName: acc?.name || '',
-                summary: e.summary,
-                debitAmount: e.debitAmount || 0,
-                creditAmount: e.creditAmount || 0,
-              };
-            }),
-          };
-          setVouchers((prev) => [...prev, newVoucher]);
-          message.success('创建凭证成功');
-        }
-        handleCloseModal();
-        setLoading(false);
-      }, 500);
-    } catch (error) {
-      console.error(error);
+
+      const formData: FinVoucherFormData = {
+        voucherWord: values.voucherWord,
+        voucherDate: values.voucherDate.format('YYYY-MM-DD'),
+        voucherType: values.voucherType,
+        attachmentCount: values.attachmentCount,
+        summary: values.summary,
+        entries: entries.map((e: any) => ({
+          accountId: e.accountId,
+          summary: e.summary,
+          debitAmount: e.debitAmount || 0,
+          creditAmount: e.creditAmount || 0,
+        })),
+      };
+
+      if (editingVoucher) {
+        await voucherApi.update(editingVoucher.id, formData);
+        message.success('更新凭证成功');
+      } else {
+        await voucherApi.create(formData);
+        message.success('创建凭证成功');
+      }
+      handleCloseModal();
+      loadVouchers();
+    } catch (error: any) {
+      if (error?.response?.data?.message) {
+        message.error(error.response.data.message);
+      } else if (error?.errorFields) {
+        // form validation error, ignore
+      } else {
+        message.error('操作失败');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSubmitForApproval = (id: number) => {
+  const handleSubmitForApproval = async (id: number) => {
     setLoading(true);
-    setTimeout(() => {
-      setVouchers((prev) => prev.map((v) => (v.id === id ? { ...v, voucherStatus: 1 } : v)));
+    try {
+      await voucherApi.submitForApproval(id);
       message.success('已提交审核');
+      loadVouchers();
+    } catch (err) {
+      message.error('提交审核失败');
+    } finally {
       setLoading(false);
-    }, 300);
+    }
   };
 
-  const handleApprove = (id: number) => {
+  const handleApprove = async (id: number) => {
     setLoading(true);
-    setTimeout(() => {
-      setVouchers((prev) =>
-        prev.map((v) =>
-          v.id === id
-            ? { ...v, voucherStatus: 2, approvedById: currentUser.id, approvedByName: currentUser.name, approvedAt: dayjs().format('YYYY-MM-DD HH:mm:ss') }
-            : v
-        )
-      );
+    try {
+      await voucherApi.approve(id);
       message.success('审核通过');
+      loadVouchers();
+    } catch (err) {
+      message.error('审核失败');
+    } finally {
       setLoading(false);
-    }, 300);
+    }
   };
 
-  const handlePost = (id: number) => {
+  const handlePost = async (id: number) => {
     setLoading(true);
-    setTimeout(() => {
-      setVouchers((prev) =>
-        prev.map((v) =>
-          v.id === id
-            ? { ...v, voucherStatus: 3, postedById: currentUser.id, postedByName: currentUser.name, postedAt: dayjs().format('YYYY-MM-DD HH:mm:ss') }
-            : v
-        )
-      );
+    try {
+      await voucherApi.post(id);
       message.success('记账成功');
+      loadVouchers();
+    } catch (err) {
+      message.error('记账失败');
+    } finally {
       setLoading(false);
-    }, 300);
+    }
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     setLoading(true);
-    setTimeout(() => {
-      setVouchers((prev) => prev.filter((v) => v.id !== id));
+    try {
+      await voucherApi.delete(id);
       message.success('删除凭证成功');
+      loadVouchers();
+    } catch (err) {
+      message.error('删除凭证失败');
+    } finally {
       setLoading(false);
-    }, 300);
+    }
   };
 
   const handleCopy = (voucher: FinVoucher) => {
-    const newVoucher: FinVoucher = {
-      ...voucher,
-      id: Math.max(...vouchers.map((v) => v.id)) + 1,
-      voucherNo: `记-2023-${String(vouchers.length + 1).padStart(4, '0')}`,
-      voucherDate: dayjs().format('YYYY-MM-DD'),
-      voucherStatus: 0,
-      createdById: currentUser.id,
-      createdByName: currentUser.name,
-      entries: voucher.entries.map((e) => ({ ...e, id: Date.now() + e.lineNo })),
-    };
-    setVouchers((prev) => [...prev, newVoucher]);
-    message.success('复制凭证成功');
+    // Copy creates a new voucher pre-filled from the existing one
+    handleOpenModal();
+    setTimeout(() => {
+      form.setFieldsValue({
+        voucherWord: voucher.voucherWord,
+        voucherDate: dayjs(),
+        voucherType: voucher.voucherType,
+        attachmentCount: voucher.attachmentCount,
+        summary: voucher.summary,
+        entries: voucher.entries.map((e) => ({
+          accountId: e.accountId,
+          summary: e.summary,
+          debitAmount: e.debitAmount,
+          creditAmount: e.creditAmount,
+        })),
+      });
+    }, 0);
   };
 
   const columns = [
     { title: '凭证号', dataIndex: 'voucherNo', key: 'voucherNo', width: 140, fixed: 'left' as const,
       render: (text: string, record: FinVoucher) => (
-        <a onClick={() => { setViewingVoucher(record); setDetailVisible(true); }}>{text}</a>
+        <a onClick={() => handleViewDetail(record)}>{text}</a>
       ),
     },
     { title: '凭证日期', dataIndex: 'voucherDate', key: 'voucherDate', width: 110 },
@@ -401,7 +329,7 @@ export default function VouchersPage() {
         return (
           <Space size="small">
             <Tooltip title="查看">
-              <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => { setViewingVoucher(record); setDetailVisible(true); }} />
+              <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleViewDetail(record)} />
             </Tooltip>
             {status === 0 && (
               <>
@@ -442,6 +370,14 @@ export default function VouchersPage() {
     },
   ];
 
+  // Tab counts - derive from status-based counts
+  const tabCounts = useMemo(() => {
+    const counts = { all: vouchers.length, draft: 0, pending: 0, approved: 0, posted: 0 };
+    // Since we filter on server side, counts are only accurate for the active tab
+    // For tab labels, we show server-side total
+    return counts;
+  }, [vouchers]);
+
   return (
     <div style={{ padding: 24 }}>
       <Card
@@ -453,12 +389,12 @@ export default function VouchersPage() {
           </Space>
         }
       >
-        <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
-          { key: 'all', label: `全部 (${vouchers.length})` },
-          { key: 'draft', label: `草稿 (${vouchers.filter((v) => v.voucherStatus === 0).length})` },
-          { key: 'pending', label: `待审核 (${vouchers.filter((v) => v.voucherStatus === 1).length})` },
-          { key: 'approved', label: `已审核 (${vouchers.filter((v) => v.voucherStatus === 2).length})` },
-          { key: 'posted', label: `已记账 (${vouchers.filter((v) => v.voucherStatus === 3).length})` },
+        <Tabs activeKey={activeTab} onChange={(key) => { setActiveTab(key); setCurrentPage(1); }} items={[
+          { key: 'all', label: `全部 (${total})` },
+          { key: 'draft', label: '草稿' },
+          { key: 'pending', label: '待审核' },
+          { key: 'approved', label: '已审核' },
+          { key: 'posted', label: '已记账' },
         ]} />
 
         <Table
@@ -468,7 +404,17 @@ export default function VouchersPage() {
           loading={loading}
           size="small"
           scroll={{ x: 1400 }}
-          pagination={{ defaultPageSize: 20, showSizeChanger: true, showTotal: (total) => `共 ${total} 条凭证` }}
+          pagination={{
+            current: currentPage,
+            pageSize: pageSize,
+            total: total,
+            showSizeChanger: true,
+            showTotal: (t) => `共 ${t} 条凭证`,
+            onChange: (page, size) => {
+              setCurrentPage(page);
+              setPageSize(size);
+            },
+          }}
         />
       </Card>
 

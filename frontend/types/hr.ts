@@ -241,3 +241,14 @@ export interface PayrollResult {
   netPay: number;
   status: 'DRAFT' | 'CONFIRMED' | 'PAID';
 }
+
+// ==================== 查询参数 ====================
+
+export interface EmployeeQuery {
+  employeeNo?: string;
+  employeeName?: string;
+  deptId?: number;
+  workStatus?: number;
+  current?: number;
+  size?: number;
+}

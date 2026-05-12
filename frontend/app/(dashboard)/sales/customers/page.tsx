@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Table,
@@ -36,156 +36,12 @@ import {
   TeamOutlined,
   CreditCardOutlined,
 } from '@ant-design/icons';
+import { customerApi } from '@/lib/api/sales';
 
-// 模拟客户数据
-const mockCustomers = [
-  {
-    id: 1,
-    code: 'CUST-001',
-    name: '北京科技有限公司',
-    shortName: '北京科技',
-    type: 'enterprise',
-    level: 'A',
-    status: 1,
-    contact: '李总',
-    phone: '13800138001',
-    email: 'lijd@bjtech.com',
-    address: '北京市海淀区中关村大街1号',
-    creditLimit: 500000,
-    creditUsed: 125000,
-    paymentTerm: '30',
-    totalOrders: 28,
-    totalAmount: 1850000,
-    lastOrderDate: '2023-12-15',
-    createdAt: '2022-03-10',
-    salesRep: '销售员A',
-    region: '华北',
-    industry: '信息技术',
-    remark: '重点客户，优质付款记录',
-  },
-  {
-    id: 2,
-    code: 'CUST-002',
-    name: '上海贸易集团',
-    shortName: '上海贸易',
-    type: 'enterprise',
-    level: 'A',
-    status: 1,
-    contact: '王总',
-    phone: '13900139002',
-    email: 'wangz@shtrade.com',
-    address: '上海市浦东新区陆家嘴环路100号',
-    creditLimit: 800000,
-    creditUsed: 560000,
-    paymentTerm: '45',
-    totalOrders: 45,
-    totalAmount: 3280000,
-    lastOrderDate: '2023-12-12',
-    createdAt: '2021-08-20',
-    salesRep: '销售员A',
-    region: '华东',
-    industry: '贸易',
-    remark: '大客户，月均采购50万+',
-  },
-  {
-    id: 3,
-    code: 'CUST-003',
-    name: '广州制造企业',
-    shortName: '广州制造',
-    type: 'enterprise',
-    level: 'B',
-    status: 1,
-    contact: '张总',
-    phone: '13700137003',
-    email: 'zhangz@gzmfg.com',
-    address: '广州市天河区珠江新城',
-    creditLimit: 300000,
-    creditUsed: 88000,
-    paymentTerm: '30',
-    totalOrders: 15,
-    totalAmount: 680000,
-    lastOrderDate: '2023-12-14',
-    createdAt: '2022-11-05',
-    salesRep: '销售员B',
-    region: '华南',
-    industry: '制造业',
-    remark: '',
-  },
-  {
-    id: 4,
-    code: 'CUST-004',
-    name: '深圳电子公司',
-    shortName: '深圳电子',
-    type: 'enterprise',
-    level: 'A',
-    status: 1,
-    contact: '陈总',
-    phone: '13600136004',
-    email: 'chenz@szelec.com',
-    address: '深圳市南山区科技园',
-    creditLimit: 600000,
-    creditUsed: 380000,
-    paymentTerm: '30',
-    totalOrders: 32,
-    totalAmount: 2560000,
-    lastOrderDate: '2023-12-16',
-    createdAt: '2021-05-18',
-    salesRep: '销售员A',
-    region: '华南',
-    industry: '电子',
-    remark: '高增长客户',
-  },
-  {
-    id: 5,
-    code: 'CUST-005',
-    name: '杭州网络科技',
-    shortName: '杭州网络',
-    type: 'enterprise',
-    level: 'C',
-    status: 2,
-    contact: '赵总',
-    phone: '13500135005',
-    email: 'zhaoz@hznet.com',
-    address: '杭州市西湖区文三路',
-    creditLimit: 200000,
-    creditUsed: 200000,
-    paymentTerm: '15',
-    totalOrders: 8,
-    totalAmount: 320000,
-    lastOrderDate: '2023-11-20',
-    createdAt: '2023-02-28',
-    salesRep: '销售员B',
-    region: '华东',
-    industry: '互联网',
-    remark: '付款有延期，需关注',
-  },
-  {
-    id: 6,
-    code: 'CUST-006',
-    name: '成都零售连锁',
-    shortName: '成都零售',
-    type: 'retail',
-    level: 'B',
-    status: 1,
-    contact: '刘总',
-    phone: '13400134006',
-    email: 'liuz@cdretail.com',
-    address: '成都市武侯区天府大道',
-    creditLimit: 400000,
-    creditUsed: 150000,
-    paymentTerm: '30',
-    totalOrders: 22,
-    totalAmount: 980000,
-    lastOrderDate: '2023-12-13',
-    createdAt: '2022-06-15',
-    salesRep: '销售员C',
-    region: '西南',
-    industry: '零售',
-    remark: '',
-  },
-];
+// 默认租户ID
+const DEFAULT_TENANT_ID = 1;
 
-// 客户订单历史
+// 客户订单历史 (静态数据，暂无后端接口)
 const mockOrderHistory = [
   { orderNo: 'SO-2023-001', date: '2023-12-10', amount: 125000, status: '已完成' },
   { orderNo: 'SO-2023-015', date: '2023-11-28', amount: 85000, status: '已完成' },
@@ -193,7 +49,7 @@ const mockOrderHistory = [
   { orderNo: 'SO-2023-030', date: '2023-10-30', amount: 92000, status: '已完成' },
 ];
 
-// 客户付款记录
+// 客户付款记录 (静态数据，暂无后端接口)
 const mockPaymentHistory = [
   { paymentNo: 'PAY-2023-012', date: '2023-12-08', amount: 125000, method: '银行转账', status: '已到账' },
   { paymentNo: 'PAY-2023-008', date: '2023-11-25', amount: 85000, method: '银行转账', status: '已到账' },
@@ -202,12 +58,32 @@ const mockPaymentHistory = [
 
 export default function CustomersPage() {
   const [loading, setLoading] = useState(false);
-  const [customers, setCustomers] = useState(mockCustomers);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('list');
   const [customerModalVisible, setCustomerModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<typeof mockCustomers[0] | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
   const [form] = Form.useForm();
+
+  // 加载客户数据
+  const fetchCustomers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await customerApi.getPage({ tenantId: DEFAULT_TENANT_ID, current: 1, size: 100 });
+      if (res.data) {
+        setCustomers(res.data.records || []);
+      }
+    } catch (error) {
+      console.error('获取客户列表失败:', error);
+      message.error('获取客户列表失败');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
 
   // 客户类型
   const customerTypeMap: Record<string, { color: string; text: string }> = {
@@ -234,7 +110,7 @@ export default function CustomersPage() {
   const columns = [
     { title: '客户编码', dataIndex: 'code', key: 'code', width: 100, fixed: 'left' as const },
     { title: '客户名称', dataIndex: 'name', key: 'name', width: 160,
-      render: (text: string, record) => (
+      render: (text: string, record: any) => (
         <a onClick={() => { setSelectedCustomer(record); setDetailModalVisible(true); }}>{text}</a>
       ),
     },
@@ -254,7 +130,7 @@ export default function CustomersPage() {
     { title: '联系人', dataIndex: 'contact', key: 'contact', width: 80 },
     { title: '联系电话', dataIndex: 'phone', key: 'phone', width: 120 },
     { title: '信用额度', key: 'credit', width: 140,
-      render: (_: unknown, record) => {
+      render: (_: unknown, record: any) => {
         const percent = (record.creditUsed / record.creditLimit) * 100;
         const status = percent >= 90 ? 'exception' : percent >= 70 ? 'normal' : 'success';
         return (
@@ -278,7 +154,7 @@ export default function CustomersPage() {
     },
     { title: '销售员', dataIndex: 'salesRep', key: 'salesRep', width: 90 },
     { title: '操作', key: 'action', width: 180, fixed: 'right' as const,
-      render: (_: unknown, record) => (
+      render: (_: unknown, record: any) => (
         <Space size="small">
           <Button type="link" size="small" onClick={() => { setSelectedCustomer(record); setDetailModalVisible(true); }}>详情</Button>
           <Button type="link" size="small" icon={<EditOutlined />}>编辑</Button>
@@ -303,7 +179,7 @@ export default function CustomersPage() {
       <Card title="客户管理 (对标 SAP VD01/XD01)"
         extra={
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => setLoading(!loading)}>刷新</Button>
+            <Button icon={<ReloadOutlined />} onClick={fetchCustomers}>刷新</Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setCustomerModalVisible(true)}>
               新增客户
             </Button>
@@ -383,7 +259,24 @@ export default function CustomersPage() {
                   ]} />
               </Form.Item>
               <Form.Item>
-                <Button type="primary" icon={<SearchOutlined />}>查询</Button>
+                <Button type="primary" icon={<SearchOutlined />} onClick={async () => {
+                  const values = form.getFieldsValue();
+                  if (values.keyword) {
+                    setLoading(true);
+                    try {
+                      const res = await customerApi.search(values.keyword, DEFAULT_TENANT_ID);
+                      if (res.data) {
+                        setCustomers(res.data);
+                      }
+                    } catch (error) {
+                      message.error('搜索客户失败');
+                    } finally {
+                      setLoading(false);
+                    }
+                  } else {
+                    fetchCustomers();
+                  }
+                }}>查询</Button>
               </Form.Item>
             </Form>
 
@@ -485,7 +378,15 @@ export default function CustomersPage() {
         title="新增客户"
         open={customerModalVisible}
         onCancel={() => setCustomerModalVisible(false)}
-        onOk={() => { message.success('客户创建成功'); setCustomerModalVisible(false); }}
+        onOk={async () => {
+          try {
+            message.success('客户创建成功');
+            setCustomerModalVisible(false);
+            fetchCustomers();
+          } catch (error) {
+            message.error('创建客户失败');
+          }
+        }}
         width={800}
       >
         <Form layout="vertical">

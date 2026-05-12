@@ -1,5 +1,6 @@
 import api from './client';
-import type { Department, Employee, EmployeeQuery, ApiResponse, PageResult } from '@/types/hr';
+import type { Department, Employee, EmployeeQuery } from '@/types/hr';
+import type { ApiResponse, PageResult } from '@/types';
 import type { PageRequest } from '@/types';
 
 const BASE_URL = '/api/v1/hr';

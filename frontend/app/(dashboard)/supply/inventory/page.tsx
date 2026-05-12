@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Table,
@@ -20,6 +20,7 @@ import {
   Tree,
   Progress,
   Descriptions,
+  message,
 } from 'antd';
 import {
   SearchOutlined,
@@ -27,32 +28,24 @@ import {
   ReloadOutlined,
   BarcodeOutlined,
 } from '@ant-design/icons';
+import { inventoryApi } from '@/lib/api/supply';
+import type { StockDTO, MaterialDocDTO } from '@/lib/api/supply';
 
 const { RangePicker } = DatePicker;
 
-// 模拟库存数据
-const mockInventory = [
-  { id: 1, materialCode: 'MAT-001', materialName: '原材料A', category: '原材料', warehouse: 'WH-01', location: 'A-1-01', quantity: 5000, unit: 'KG', safetyStock: 1000, maxStock: 10000, unitPrice: 25.50, totalValue: 127500, status: 1 },
-  { id: 2, materialCode: 'MAT-002', materialName: '原材料B', category: '原材料', warehouse: 'WH-01', location: 'A-1-02', quantity: 3000, unit: 'KG', safetyStock: 500, maxStock: 8000, unitPrice: 32.00, totalValue: 96000, status: 1 },
-  { id: 3, materialCode: 'MAT-003', materialName: '包装材料', category: '包材', warehouse: 'WH-02', location: 'B-1-01', quantity: 10000, unit: 'PCS', safetyStock: 2000, maxStock: 20000, unitPrice: 1.50, totalValue: 15000, status: 1 },
-  { id: 4, materialCode: 'MAT-004', materialName: '半成品C', category: '半成品', warehouse: 'WH-01', location: 'A-2-01', quantity: 800, unit: 'PCS', safetyStock: 200, maxStock: 2000, unitPrice: 125.00, totalValue: 100000, status: 1 },
-  { id: 5, materialCode: 'MAT-005', materialName: '产成品D', category: '产成品', warehouse: 'WH-03', location: 'C-1-01', quantity: 1500, unit: 'PCS', safetyStock: 300, maxStock: 5000, unitPrice: 280.00, totalValue: 420000, status: 1 },
-  { id: 6, materialCode: 'MAT-006', materialName: '辅助材料E', category: '辅材', warehouse: 'WH-02', location: 'B-2-01', quantity: 200, unit: 'L', safetyStock: 100, maxStock: 500, unitPrice: 45.00, totalValue: 9000, status: 2 },
-  { id: 7, materialCode: 'MAT-007', materialName: '备件F', category: '备件', warehouse: 'WH-02', location: 'B-3-01', quantity: 50, unit: 'SET', safetyStock: 20, maxStock: 100, unitPrice: 500.00, totalValue: 25000, status: 1 },
-  { id: 8, materialCode: 'MAT-008', materialName: '原材料G', category: '原材料', warehouse: 'WH-01', location: 'A-1-03', quantity: 400, unit: 'KG', safetyStock: 800, maxStock: 5000, unitPrice: 18.50, totalValue: 7400, status: 3 },
-];
-
-// 库存变动记录
-const mockMovements = [
-  { id: 1, movementNo: 'MIGO-2023-001', materialCode: 'MAT-001', materialName: '原材料A', movementType: 'GR', movementTypeName: '收货', quantity: 1000, warehouse: 'WH-01', referenceNo: 'PO-2023-001', createdAt: '2023-12-15 10:30', createdBy: '张三' },
-  { id: 2, movementNo: 'MIGO-2023-002', materialCode: 'MAT-001', materialName: '原材料A', movementType: 'GI', movementTypeName: '发货', quantity: -500, warehouse: 'WH-01', referenceNo: 'WO-2023-015', createdAt: '2023-12-15 14:00', createdBy: '李四' },
-  { id: 3, movementNo: 'MIGO-2023-003', materialCode: 'MAT-005', materialName: '产成品D', movementType: 'GR', movementTypeName: '收货', quantity: 200, warehouse: 'WH-03', referenceNo: 'WO-2023-012', createdAt: '2023-12-14 16:00', createdBy: '王五' },
-];
+// Default tenant ID
+const DEFAULT_TENANT_ID = 1;
 
 export default function InventoryPage() {
   const [loading, setLoading] = useState(false);
-  const [inventory] = useState(mockInventory);
-  const [movements] = useState(mockMovements);
+  const [inventory, setInventory] = useState<StockDTO[]>([]);
+  const [movements, setMovements] = useState<MaterialDocDTO[]>([]);
+  const [stockTotal, setStockTotal] = useState(0);
+  const [stockPage, setStockPage] = useState(1);
+  const [stockPageSize, setStockPageSize] = useState(20);
+  const [docTotal, setDocTotal] = useState(0);
+  const [docPage, setDocPage] = useState(1);
+  const [docPageSize, setDocPageSize] = useState(20);
   const [activeTab, setActiveTab] = useState('stock');
   const [movementModalVisible, setMovementModalVisible] = useState(false);
   const [form] = Form.useForm();
@@ -84,6 +77,54 @@ export default function InventoryPage() {
     },
   ];
 
+  const fetchStock = useCallback(async (page = stockPage, size = stockPageSize) => {
+    try {
+      setLoading(true);
+      const res = await inventoryApi.getStock({
+        tenantId: DEFAULT_TENANT_ID,
+        current: page,
+        size,
+      });
+      if (res.success && res.data) {
+        setInventory(res.data.records);
+        setStockTotal(res.data.total);
+      }
+    } catch (error) {
+      console.error('Failed to fetch stock:', error);
+      message.error('获取库存数据失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [stockPage, stockPageSize]);
+
+  const fetchMovements = useCallback(async (page = docPage, size = docPageSize) => {
+    try {
+      setLoading(true);
+      const res = await inventoryApi.getMaterialDocs({
+        tenantId: DEFAULT_TENANT_ID,
+        current: page,
+        size,
+      });
+      if (res.success && res.data) {
+        setMovements(res.data.records);
+        setDocTotal(res.data.total);
+      }
+    } catch (error) {
+      console.error('Failed to fetch material docs:', error);
+      message.error('获取物料凭证失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [docPage, docPageSize]);
+
+  useEffect(() => {
+    if (activeTab === 'stock') {
+      fetchStock();
+    } else if (activeTab === 'movement') {
+      fetchMovements();
+    }
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // 库存表格列
   const stockColumns = [
     { title: '物料编码', dataIndex: 'materialCode', key: 'materialCode', width: 110, fixed: 'left' as const },
@@ -94,10 +135,10 @@ export default function InventoryPage() {
     { title: '仓库', dataIndex: 'warehouse', key: 'warehouse', width: 80 },
     { title: '库位', dataIndex: 'location', key: 'location', width: 80 },
     { title: '库存数量', dataIndex: 'quantity', key: 'quantity', width: 100, align: 'right' as const,
-      render: (v: number, record) => `${v} ${record.unit}`,
+      render: (v: number, record: any) => `${v} ${record.unit}`,
     },
     { title: '库存状态', key: 'stockStatus', width: 120,
-      render: (_: unknown, record) => {
+      render: (_: unknown, record: any) => {
         const percent = (record.quantity / record.maxStock) * 100;
         let status: 'success' | 'normal' | 'exception' = 'normal';
         if (record.quantity <= record.safetyStock) status = 'exception';
@@ -130,7 +171,7 @@ export default function InventoryPage() {
     { title: '物料编码', dataIndex: 'materialCode', key: 'materialCode', width: 110 },
     { title: '物料名称', dataIndex: 'materialName', key: 'materialName', width: 120 },
     { title: '移动类型', dataIndex: 'movementTypeName', key: 'movementTypeName', width: 80,
-      render: (text: string, record) => (
+      render: (text: string, record: any) => (
         <Tag color={record.quantity > 0 ? 'green' : 'red'}>{text}</Tag>
       ),
     },
@@ -151,12 +192,22 @@ export default function InventoryPage() {
     warningCount: inventory.filter(d => d.status === 3).length,
   };
 
+  const handleRefresh = () => {
+    if (activeTab === 'stock') {
+      fetchStock(1);
+      setStockPage(1);
+    } else if (activeTab === 'movement') {
+      fetchMovements(1);
+      setDocPage(1);
+    }
+  };
+
   return (
     <div style={{ padding: 24 }}>
       <Card title="库存管理 (对标 SAP MMBE)"
         extra={
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => setLoading(!loading)}>刷新</Button>
+            <Button icon={<ReloadOutlined />} onClick={handleRefresh}>刷新</Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setMovementModalVisible(true)}>
               库存移动
             </Button>
@@ -230,7 +281,7 @@ export default function InventoryPage() {
                   ]} />
               </Form.Item>
               <Form.Item>
-                <Button type="primary" icon={<SearchOutlined />}>查询</Button>
+                <Button type="primary" icon={<SearchOutlined />} onClick={() => fetchStock(1)}>查询</Button>
               </Form.Item>
             </Form>
 
@@ -241,7 +292,17 @@ export default function InventoryPage() {
               loading={loading}
               size="small"
               scroll={{ x: 1200 }}
-              pagination={{ defaultPageSize: 20, showSizeChanger: true }}
+              pagination={{
+                current: stockPage,
+                pageSize: stockPageSize,
+                total: stockTotal,
+                showSizeChanger: true,
+                onChange: (page, size) => {
+                  setStockPage(page);
+                  setStockPageSize(size);
+                  fetchStock(page, size);
+                },
+              }}
             />
           </>
         )}
@@ -262,7 +323,7 @@ export default function InventoryPage() {
                   ]} />
               </Form.Item>
               <Form.Item>
-                <Button type="primary" icon={<SearchOutlined />}>查询</Button>
+                <Button type="primary" icon={<SearchOutlined />} onClick={() => fetchMovements(1)}>查询</Button>
               </Form.Item>
             </Form>
 
@@ -272,7 +333,17 @@ export default function InventoryPage() {
               rowKey="id"
               loading={loading}
               size="small"
-              pagination={{ defaultPageSize: 20, showSizeChanger: true }}
+              pagination={{
+                current: docPage,
+                pageSize: docPageSize,
+                total: docTotal,
+                showSizeChanger: true,
+                onChange: (page, size) => {
+                  setDocPage(page);
+                  setDocPageSize(size);
+                  fetchMovements(page, size);
+                },
+              }}
             />
           </>
         )}
@@ -298,8 +369,8 @@ export default function InventoryPage() {
                   <Descriptions.Item label="负责人">张三</Descriptions.Item>
                   <Descriptions.Item label="库位数">15</Descriptions.Item>
                   <Descriptions.Item label="已用库位">12</Descriptions.Item>
-                  <Descriptions.Item label="库存金额">¥223,500</Descriptions.Item>
-                  <Descriptions.Item label="物料种类">25</Descriptions.Item>
+                  <Descriptions.Item label="库存金额">¥{totalStats.totalValue.toLocaleString()}</Descriptions.Item>
+                  <Descriptions.Item label="物料种类">{inventory.length}</Descriptions.Item>
                 </Descriptions>
               </Card>
             </Col>

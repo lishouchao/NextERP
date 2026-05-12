@@ -1,5 +1,8 @@
 package com.nexterp.business.sales.controller;
 
+import com.nexterp.business.sales.application.service.SdConditionService;
+import com.nexterp.business.sales.dto.ConditionDTO;
+import com.nexterp.business.sales.dto.CreateConditionRequest;
 import com.nexterp.shared.core.result.PageResult;
 import com.nexterp.shared.core.result.Result;
 import jakarta.validation.Valid;
@@ -7,9 +10,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Collections;
-import java.util.Map;
 
 /**
  * 条件控制器
@@ -22,6 +22,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SdConditionController {
 
+    private final SdConditionService conditionService;
+
     /**
      * 分页查询条件记录
      *
@@ -33,20 +35,13 @@ public class SdConditionController {
      */
     @GetMapping
     @PreAuthorize("hasAuthority('sd:condition:view')")
-    public Result<PageResult<Map<String, Object>>> listConditions(
+    public Result<PageResult<ConditionDTO>> listConditions(
             @RequestParam Long tenantId,
             @RequestParam(required = false) String conditionType,
             @RequestParam(defaultValue = "1") int current,
             @RequestParam(defaultValue = "10") int size) {
         log.info("查询条件记录列表, tenantId={}, conditionType={}, current={}, size={}", tenantId, conditionType, current, size);
-        // TODO: 调用条件服务
-        PageResult<Map<String, Object>> pageResult = PageResult.<Map<String, Object>>builder()
-                .records(Collections.emptyList())
-                .total(0L)
-                .current(current)
-                .size(size)
-                .build();
-        return Result.success(pageResult);
+        return Result.success(conditionService.listConditions(tenantId, conditionType, current, size));
     }
 
     /**
@@ -57,10 +52,9 @@ public class SdConditionController {
      */
     @PostMapping
     @PreAuthorize("hasAuthority('sd:condition:add')")
-    public Result<Long> createCondition(@Valid @RequestBody Map<String, Object> request) {
+    public Result<Long> createCondition(@Valid @RequestBody CreateConditionRequest request) {
         log.info("创建条件记录");
-        // TODO: 调用条件服务
-        return Result.success(1L);
+        return Result.success(conditionService.createCondition(request));
     }
 
     /**
@@ -71,10 +65,9 @@ public class SdConditionController {
      */
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('sd:condition:view')")
-    public Result<Map<String, Object>> getConditionById(@PathVariable Long id) {
+    public Result<ConditionDTO> getConditionById(@PathVariable Long id) {
         log.info("获取条件记录详情, id={}", id);
-        // TODO: 调用条件服务
-        return Result.success(Map.of("id", id));
+        return Result.success(conditionService.getConditionById(id));
     }
 
     /**
@@ -86,12 +79,12 @@ public class SdConditionController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('sd:condition:edit')")
-    public Result<Map<String, Object>> updateCondition(
+    public Result<Void> updateCondition(
             @PathVariable Long id,
-            @Valid @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody CreateConditionRequest request) {
         log.info("更新条件记录, id={}", id);
-        // TODO: 调用条件服务
-        return Result.success(Map.of("id", id));
+        conditionService.updateCondition(id, request);
+        return Result.success();
     }
 
     /**
@@ -104,7 +97,7 @@ public class SdConditionController {
     @PreAuthorize("hasAuthority('sd:condition:delete')")
     public Result<Void> deleteCondition(@PathVariable Long id) {
         log.info("删除条件记录, id={}", id);
-        // TODO: 调用条件服务
+        conditionService.deleteCondition(id);
         return Result.success();
     }
 }

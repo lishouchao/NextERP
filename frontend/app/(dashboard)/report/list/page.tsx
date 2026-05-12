@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { apiClient } from '@/lib/api/client';
+import api from '@/lib/api/client';
 
 interface Report {
   id: number;
@@ -29,7 +29,7 @@ export default function ReportListPage() {
       if (selectedGroup) {
         params.append('reportGroup', selectedGroup);
       }
-      const response = await apiClient.get(`/report/v1/management?${params}`);
+      const response = await api.get(`/report/v1/management?${params}`);
       setReports(response.data.records || []);
     } catch (error) {
       console.error('获取报表列表失败', error);
@@ -41,7 +41,7 @@ export default function ReportListPage() {
   const exportReport = async (reportCode: string) => {
     try {
       const tenantId = localStorage.getItem('tenantId') || '1';
-      const response = await apiClient.post(`/report/v1/reports/${reportCode}/export?tenantId=${tenantId}`, {}, {
+      const response = await api.post(`/report/v1/reports/${reportCode}/export?tenantId=${tenantId}`, {}, {
         responseType: 'blob'
       });
 
@@ -72,7 +72,7 @@ export default function ReportListPage() {
     }
   };
 
-  const groups = [...new Set(reports.map(r => r.reportGroup).filter(Boolean))];
+  const groups = Array.from(new Set(reports.map(r => r.reportGroup).filter(Boolean)));
 
   if (loading) {
     return <div className="p-6">加载中...</div>;

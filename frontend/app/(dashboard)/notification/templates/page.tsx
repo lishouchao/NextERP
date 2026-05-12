@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { apiClient } from '@/lib/api/client';
+import api from '@/lib/api/client';
 
 interface Template {
   id: number;
@@ -31,7 +31,7 @@ export default function NotificationTemplatePage() {
   const fetchTemplates = async () => {
     try {
       const tenantId = localStorage.getItem('tenantId') || '1';
-      const response = await apiClient.get(`/notification/v1/templates?tenantId=${tenantId}`);
+      const response = await api.get(`/notification/v1/templates?tenantId=${tenantId}`);
       setTemplates(response.data || []);
     } catch (error) {
       console.error('获取模板列表失败', error);
@@ -49,9 +49,9 @@ export default function NotificationTemplatePage() {
     try {
       const tenantId = localStorage.getItem('tenantId') || '1';
       if (form.id) {
-        await apiClient.put(`/notification/v1/templates/${form.id}`, { ...form, tenantId: Number(tenantId) });
+        await api.put(`/notification/v1/templates/${form.id}`, { ...form, tenantId: Number(tenantId) });
       } else {
-        await apiClient.post('/notification/v1/templates', { ...form, tenantId: Number(tenantId) });
+        await api.post('/notification/v1/templates', { ...form, tenantId: Number(tenantId) });
       }
       setEditing(false);
       setForm({ notificationType: 'system', status: 1 });
@@ -65,7 +65,7 @@ export default function NotificationTemplatePage() {
   const deleteTemplate = async (id: number) => {
     if (!confirm('确定删除此模板？')) return;
     try {
-      await apiClient.delete(`/notification/v1/templates/${id}`);
+      await api.delete(`/notification/v1/templates/${id}`);
       fetchTemplates();
     } catch (error) {
       console.error('删除模板失败', error);
@@ -154,7 +154,7 @@ export default function NotificationTemplatePage() {
                 placeholder="例如: ${processName}审批通知"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               />
-              <p className="text-xs text-gray-500 mt-1">使用 ${variableName} 作为变量占位符</p>
+              <p className="text-xs text-gray-500 mt-1">{"使用 ${variableName} 作为变量占位符"}</p>
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">内容模板</label>

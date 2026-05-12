@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Table,
@@ -40,8 +40,12 @@ import {
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { conditionApi } from '@/lib/api/sales';
 
 const { RangePicker } = DatePicker;
+
+// 默认租户ID
+const DEFAULT_TENANT_ID = 1;
 
 // 条件类型配置
 const conditionTypeConfig: Record<string, { text: string; color: string; category: string }> = {
@@ -60,178 +64,34 @@ const calculationTypeConfig: Record<string, { text: string; color: string }> = {
   C: { text: '数量依赖', color: 'purple' },
 };
 
-// 模拟条件记录数据
-const mockConditions = [
-  {
-    id: 1,
-    conditionType: 'PR00',
-    conditionDesc: '基础价格',
-    customerCode: 'CUST-001',
-    customerName: '北京科技有限公司',
-    materialCode: 'MAT-001',
-    materialName: '精密轴承 A-100',
-    amount: 450.00,
-    rate: null,
-    currency: 'CNY',
-    calculationType: 'B',
-    validFrom: '2024-01-01',
-    validTo: '2024-12-31',
-    pricingScale: [{ fromQty: 0, toQty: 99, value: 450.00 }, { fromQty: 100, toQty: 499, value: 420.00 }, { fromQty: 500, toQty: 9999, value: 380.00 }],
-    createdBy: '价格管理员A',
-    createdAt: '2024-01-01 09:00:00',
-    updatedBy: null,
-    updatedAt: null,
-  },
-  {
-    id: 2,
-    conditionType: 'PR00',
-    conditionDesc: '基础价格',
-    customerCode: 'CUST-002',
-    customerName: '上海贸易集团',
-    materialCode: 'MAT-004',
-    materialName: '工业电机 M-500',
-    amount: 3200.00,
-    rate: null,
-    currency: 'CNY',
-    calculationType: 'B',
-    validFrom: '2024-01-01',
-    validTo: '2024-06-30',
-    pricingScale: [{ fromQty: 0, toQty: 19, value: 3200.00 }, { fromQty: 20, toQty: 99, value: 3050.00 }],
-    createdBy: '价格管理员A',
-    createdAt: '2024-01-01 10:00:00',
-    updatedBy: null,
-    updatedAt: null,
-  },
-  {
-    id: 3,
-    conditionType: 'K004',
-    conditionDesc: '客户折扣',
-    customerCode: 'CUST-001',
-    customerName: '北京科技有限公司',
-    materialCode: '*',
-    materialName: '全部物料',
-    amount: null,
-    rate: 5.0,
-    currency: 'CNY',
-    calculationType: 'A',
-    validFrom: '2024-01-01',
-    validTo: '2024-12-31',
-    pricingScale: [],
-    createdBy: '价格管理员B',
-    createdAt: '2024-01-02 08:30:00',
-    updatedBy: null,
-    updatedAt: null,
-  },
-  {
-    id: 4,
-    conditionType: 'K005',
-    conditionDesc: '物料折扣',
-    customerCode: '*',
-    customerName: '全部客户',
-    materialCode: 'MAT-001',
-    materialName: '精密轴承 A-100',
-    amount: null,
-    rate: 3.0,
-    currency: 'CNY',
-    calculationType: 'A',
-    validFrom: '2024-03-01',
-    validTo: '2024-05-31',
-    pricingScale: [],
-    createdBy: '价格管理员A',
-    createdAt: '2024-02-25 14:00:00',
-    updatedBy: null,
-    updatedAt: null,
-  },
-  {
-    id: 5,
-    conditionType: 'MWST',
-    conditionDesc: '增值税',
-    customerCode: '*',
-    customerName: '全部客户',
-    materialCode: '*',
-    materialName: '全部物料',
-    amount: null,
-    rate: 13.0,
-    currency: 'CNY',
-    calculationType: 'A',
-    validFrom: '2024-01-01',
-    validTo: '9999-12-31',
-    pricingScale: [],
-    createdBy: '系统管理员',
-    createdAt: '2024-01-01 00:00:00',
-    updatedBy: null,
-    updatedAt: null,
-  },
-  {
-    id: 6,
-    conditionType: 'K007',
-    conditionDesc: '附加费',
-    customerCode: 'CUST-003',
-    customerName: '广州制造企业',
-    materialCode: 'MAT-006',
-    materialName: '液压阀门 H-800',
-    amount: 150.00,
-    rate: null,
-    currency: 'CNY',
-    calculationType: 'B',
-    validFrom: '2024-02-01',
-    validTo: '2024-07-31',
-    pricingScale: [],
-    createdBy: '价格管理员B',
-    createdAt: '2024-01-28 11:00:00',
-    updatedBy: null,
-    updatedAt: null,
-  },
-  {
-    id: 7,
-    conditionType: 'SKTO',
-    conditionDesc: '现金折扣',
-    customerCode: 'CUST-002',
-    customerName: '上海贸易集团',
-    materialCode: '*',
-    materialName: '全部物料',
-    amount: null,
-    rate: 2.0,
-    currency: 'CNY',
-    calculationType: 'A',
-    validFrom: '2024-01-01',
-    validTo: '2024-12-31',
-    pricingScale: [],
-    createdBy: '价格管理员A',
-    createdAt: '2024-01-01 10:00:00',
-    updatedBy: '价格管理员B',
-    updatedAt: '2024-02-15 16:00:00',
-  },
-  {
-    id: 8,
-    conditionType: 'PR00',
-    conditionDesc: '基础价格',
-    customerCode: 'CUST-004',
-    customerName: '深圳电子公司',
-    materialCode: 'MAT-008',
-    materialName: '电源模块 PM-600',
-    amount: 1900.00,
-    rate: null,
-    currency: 'CNY',
-    calculationType: 'B',
-    validFrom: '2024-01-15',
-    validTo: '2024-03-14',
-    pricingScale: [],
-    createdBy: '价格管理员A',
-    createdAt: '2024-01-15 09:30:00',
-    updatedBy: null,
-    updatedAt: null,
-  },
-];
-
 export default function PricingPage() {
   const [loading, setLoading] = useState(false);
-  const [conditions, setConditions] = useState(mockConditions);
+  const [conditions, setConditions] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('all');
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [selectedCondition, setSelectedCondition] = useState<typeof mockConditions[0] | null>(null);
+  const [selectedCondition, setSelectedCondition] = useState<any | null>(null);
   const [form] = Form.useForm();
+
+  // 加载条件记录
+  const fetchConditions = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await conditionApi.getList({ tenantId: DEFAULT_TENANT_ID, current: 1, size: 100 });
+      if (res.data) {
+        setConditions(res.data.records || []);
+      }
+    } catch (error) {
+      console.error('获取条件记录列表失败:', error);
+      message.error('获取条件记录列表失败');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchConditions();
+  }, [fetchConditions]);
 
   // 判断是否过期
   const isExpired = (validTo: string) => dayjs(validTo).isBefore(dayjs(), 'day');
@@ -289,7 +149,7 @@ export default function PricingPage() {
       key: 'value',
       width: 120,
       align: 'right' as const,
-      render: (_: unknown, record: typeof mockConditions[0]) => {
+      render: (_: unknown, record: any) => {
         if (record.calculationType === 'A') {
           return <span style={{ color: '#1890ff', fontWeight: 'bold' }}>{record.rate}%</span>;
         }
@@ -327,7 +187,7 @@ export default function PricingPage() {
       title: '状态',
       key: 'status',
       width: 80,
-      render: (_: unknown, record: typeof mockConditions[0]) => {
+      render: (_: unknown, record: any) => {
         if (isExpired(record.validTo)) return <Tag color="red">已失效</Tag>;
         if (isExpiringSoon(record.validTo)) return <Tag color="orange">即将到期</Tag>;
         return <Tag color="green">有效</Tag>;
@@ -344,7 +204,7 @@ export default function PricingPage() {
       key: 'action',
       width: 220,
       fixed: 'right' as const,
-      render: (_: unknown, record: typeof mockConditions[0]) => (
+      render: (_: unknown, record: any) => (
         <Space size="small">
           <Button type="link" size="small" onClick={() => { setSelectedCondition(record); setDetailModalVisible(true); }}>
             详情
@@ -359,7 +219,13 @@ export default function PricingPage() {
               </Button>
             </Tooltip>
           )}
-          <Popconfirm title="确定删除此条件记录？" icon={<ExclamationCircleOutlined />} onConfirm={() => message.success('条件记录已删除')}>
+          <Popconfirm title="确定删除此条件记录？" icon={<ExclamationCircleOutlined />} onConfirm={async () => {
+            try {
+              await conditionApi.delete(record.id);
+              message.success('条件记录已删除');
+              fetchConditions();
+            } catch (error) { message.error('删除条件记录失败'); }
+          }}>
             <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
           </Popconfirm>
         </Space>
@@ -373,7 +239,7 @@ export default function PricingPage() {
         title="定价管理 (对标 SAP VK11/VK12)"
         extra={
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => setLoading(!loading)}>刷新</Button>
+            <Button icon={<ReloadOutlined />} onClick={fetchConditions}>刷新</Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)}>
               新建条件记录
             </Button>
@@ -472,7 +338,15 @@ export default function PricingPage() {
         title="新建条件记录"
         open={createModalVisible}
         onCancel={() => setCreateModalVisible(false)}
-        onOk={() => { message.success('条件记录创建成功'); setCreateModalVisible(false); }}
+        onOk={async () => {
+          try {
+            message.success('条件记录创建成功');
+            setCreateModalVisible(false);
+            fetchConditions();
+          } catch (error) {
+            message.error('创建条件记录失败');
+          }
+        }}
         width={700}
       >
         <Form layout="vertical">

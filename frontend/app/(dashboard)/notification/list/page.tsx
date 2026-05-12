@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { apiClient } from '@/lib/api/client';
+import api from '@/lib/api/client';
 
 interface Notification {
   id: number;
@@ -34,8 +34,8 @@ export default function NotificationListPage() {
     try {
       const userId = localStorage.getItem('userId') || '1';
       const [listRes, countRes] = await Promise.all([
-        apiClient.get(`/notification/v1/notifications/${filter === 'unread' ? 'unread' : 'all'}?receiverId=${userId}`),
-        apiClient.get(`/notification/v1/notifications/unread/count?receiverId=${userId}`)
+        api.get(`/notification/v1/notifications/${filter === 'unread' ? 'unread' : 'all'}?receiverId=${userId}`),
+        api.get(`/notification/v1/notifications/unread/count?receiverId=${userId}`)
       ]);
       setNotifications(listRes.data || []);
       setUnreadCount(countRes.data || 0);
@@ -48,7 +48,7 @@ export default function NotificationListPage() {
 
   const markAsRead = async (id: number) => {
     try {
-      await apiClient.put(`/notification/v1/notifications/${id}/read`);
+      await api.put(`/notification/v1/notifications/${id}/read`);
       fetchData();
     } catch (error) {
       console.error('标记已读失败', error);
@@ -58,7 +58,7 @@ export default function NotificationListPage() {
   const markAllAsRead = async () => {
     try {
       const userId = localStorage.getItem('userId') || '1';
-      await apiClient.put(`/notification/v1/notifications/all/read?receiverId=${userId}`);
+      await api.put(`/notification/v1/notifications/all/read?receiverId=${userId}`);
       fetchData();
     } catch (error) {
       console.error('全部标记已读失败', error);

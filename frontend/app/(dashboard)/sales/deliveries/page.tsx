@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Table,
@@ -39,8 +39,12 @@ import {
   RightOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { deliveryApi } from '@/lib/api/sales';
 
 const { RangePicker } = DatePicker;
+
+// 默认租户ID
+const DEFAULT_TENANT_ID = 1;
 
 // 交货类型配置
 const deliveryTypeConfig: Record<string, { text: string; color: string }> = {
@@ -71,156 +75,6 @@ const deliveryStatusConfig: Record<string, { text: string; color: string; step: 
   '04': { text: '已完成', color: 'green', step: 3 },
 };
 
-// 模拟交货数据
-const mockDeliveries = [
-  {
-    id: 1,
-    deliveryNumber: 'DN-2024-001',
-    deliveryType: 'LF',
-    salesOrder: 'SO-2023-001',
-    customerCode: 'CUST-001',
-    customerName: '北京科技有限公司',
-    documentDate: '2024-01-05',
-    plannedGiDate: '2024-01-08',
-    actualGiDate: '2024-01-08',
-    pickingStatus: 'C',
-    giStatus: 'B',
-    deliveryStatus: '04',
-    totalWeight: 1250.5,
-    weightUnit: 'KG',
-    shippingPoint: 'SP01',
-    items: [
-      { materialCode: 'MAT-001', materialName: '精密轴承 A-100', orderQty: 100, deliveredQty: 100, unit: 'PCS', batch: 'B20240101' },
-      { materialCode: 'MAT-002', materialName: '密封组件 S-200', orderQty: 200, deliveredQty: 200, unit: 'PCS', batch: 'B20240102' },
-    ],
-    createdBy: '仓管员A',
-    createdAt: '2024-01-05 09:30:00',
-  },
-  {
-    id: 2,
-    deliveryNumber: 'DN-2024-002',
-    deliveryType: 'LF',
-    salesOrder: 'SO-2023-002',
-    customerCode: 'CUST-002',
-    customerName: '上海贸易集团',
-    documentDate: '2024-01-08',
-    plannedGiDate: '2024-01-12',
-    actualGiDate: null,
-    pickingStatus: 'B',
-    giStatus: 'A',
-    deliveryStatus: '02',
-    totalWeight: 3200.0,
-    weightUnit: 'KG',
-    shippingPoint: 'SP01',
-    items: [
-      { materialCode: 'MAT-001', materialName: '精密轴承 A-100', orderQty: 150, deliveredQty: 80, unit: 'PCS', batch: 'B20240103' },
-      { materialCode: 'MAT-004', materialName: '工业电机 M-500', orderQty: 50, deliveredQty: 50, unit: 'SET', batch: 'B20240104' },
-      { materialCode: 'MAT-005', materialName: '控制面板 CP-300', orderQty: 10, deliveredQty: 0, unit: 'PCS', batch: '' },
-    ],
-    createdBy: '仓管员B',
-    createdAt: '2024-01-08 14:20:00',
-  },
-  {
-    id: 3,
-    deliveryNumber: 'DN-2024-003',
-    deliveryType: 'LR',
-    salesOrder: 'SO-2023-006',
-    customerCode: 'CUST-005',
-    customerName: '杭州网络科技',
-    documentDate: '2024-01-10',
-    plannedGiDate: '2024-01-13',
-    actualGiDate: null,
-    pickingStatus: 'A',
-    giStatus: 'A',
-    deliveryStatus: '01',
-    totalWeight: 80.0,
-    weightUnit: 'KG',
-    shippingPoint: 'SP02',
-    items: [
-      { materialCode: 'MAT-003', materialName: '传感器模组 T-150', orderQty: 20, deliveredQty: 0, unit: 'PCS', batch: '' },
-    ],
-    createdBy: '仓管员A',
-    createdAt: '2024-01-10 10:00:00',
-  },
-  {
-    id: 4,
-    deliveryNumber: 'DN-2024-004',
-    deliveryType: 'LF',
-    salesOrder: 'SO-2023-003',
-    customerCode: 'CUST-003',
-    customerName: '广州制造企业',
-    documentDate: '2024-01-12',
-    plannedGiDate: '2024-01-15',
-    actualGiDate: null,
-    pickingStatus: 'A',
-    giStatus: 'A',
-    deliveryStatus: '01',
-    totalWeight: 560.0,
-    weightUnit: 'KG',
-    shippingPoint: 'SP01',
-    items: [
-      { materialCode: 'MAT-006', materialName: '液压阀门 H-800', orderQty: 30, deliveredQty: 0, unit: 'PCS', batch: '' },
-      { materialCode: 'MAT-007', materialName: '连接法兰 F-400', orderQty: 60, deliveredQty: 0, unit: 'PCS', batch: '' },
-    ],
-    createdBy: '仓管员C',
-    createdAt: '2024-01-12 08:45:00',
-  },
-  {
-    id: 5,
-    deliveryNumber: 'DN-2024-005',
-    deliveryType: 'NL',
-    salesOrder: null,
-    customerCode: 'CUST-004',
-    customerName: '深圳电子公司',
-    documentDate: '2024-01-14',
-    plannedGiDate: '2024-01-16',
-    actualGiDate: '2024-01-16',
-    pickingStatus: 'C',
-    giStatus: 'B',
-    deliveryStatus: '04',
-    totalWeight: 2100.0,
-    weightUnit: 'KG',
-    shippingPoint: 'SP02',
-    items: [
-      { materialCode: 'MAT-008', materialName: '电源模块 PM-600', orderQty: 200, deliveredQty: 200, unit: 'PCS', batch: 'B20240110' },
-    ],
-    createdBy: '仓管员A',
-    createdAt: '2024-01-14 11:15:00',
-  },
-  {
-    id: 6,
-    deliveryNumber: 'DN-2024-006',
-    deliveryType: 'LO',
-    salesOrder: null,
-    customerCode: 'CUST-001',
-    customerName: '北京科技有限公司',
-    documentDate: '2024-01-15',
-    plannedGiDate: '2024-01-18',
-    actualGiDate: null,
-    pickingStatus: 'B',
-    giStatus: 'A',
-    deliveryStatus: '02',
-    totalWeight: 450.0,
-    weightUnit: 'KG',
-    shippingPoint: 'SP01',
-    items: [
-      { materialCode: 'MAT-009', materialName: '伺服驱动器 SD-200', orderQty: 15, deliveredQty: 10, unit: 'SET', batch: 'B20240112' },
-      { materialCode: 'MAT-010', materialName: '编码器 EN-100', orderQty: 30, deliveredQty: 0, unit: 'PCS', batch: '' },
-    ],
-    createdBy: '仓管员B',
-    createdAt: '2024-01-15 16:30:00',
-  },
-];
-
-// 模拟销售订单（供新建交货选择）
-const mockSalesOrders = [
-  { orderNo: 'SO-2023-001', customerName: '北京科技有限公司', items: 5, status: '已审批' },
-  { orderNo: 'SO-2023-002', customerName: '上海贸易集团', items: 3, status: '已审批' },
-  { orderNo: 'SO-2023-003', customerName: '广州制造企业', items: 2, status: '已审批' },
-  { orderNo: 'SO-2023-004', customerName: '北京科技有限公司', items: 4, status: '已审批' },
-  { orderNo: 'SO-2023-005', customerName: '深圳电子公司', items: 8, status: '部分发货' },
-];
-
 // 装运点
 const shippingPoints = [
   { value: 'SP01', label: 'SP01 - 主仓库' },
@@ -230,12 +84,32 @@ const shippingPoints = [
 
 export default function DeliveriesPage() {
   const [loading, setLoading] = useState(false);
-  const [deliveries, setDeliveries] = useState(mockDeliveries);
+  const [deliveries, setDeliveries] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('all');
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [selectedDelivery, setSelectedDelivery] = useState<typeof mockDeliveries[0] | null>(null);
+  const [selectedDelivery, setSelectedDelivery] = useState<any | null>(null);
   const [form] = Form.useForm();
+
+  // 加载交货单数据
+  const fetchDeliveries = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await deliveryApi.getList({ tenantId: DEFAULT_TENANT_ID, current: 1, size: 100 });
+      if (res.data) {
+        setDeliveries(res.data.records || []);
+      }
+    } catch (error) {
+      console.error('获取交货单列表失败:', error);
+      message.error('获取交货单列表失败');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDeliveries();
+  }, [fetchDeliveries]);
 
   // 按状态筛选
   const filteredDeliveries = activeTab === 'all' ? deliveries : deliveries.filter(d => {
@@ -261,7 +135,7 @@ export default function DeliveriesPage() {
       key: 'deliveryNumber',
       width: 140,
       fixed: 'left' as const,
-      render: (text: string, record: typeof mockDeliveries[0]) => (
+      render: (text: string, record: any) => (
         <a onClick={() => { setSelectedDelivery(record); setDetailModalVisible(true); }}>{text}</a>
       ),
     },
@@ -292,7 +166,7 @@ export default function DeliveriesPage() {
       dataIndex: 'plannedGiDate',
       key: 'plannedGiDate',
       width: 110,
-      render: (date: string, record: typeof mockDeliveries[0]) => {
+      render: (date: string, record: any) => {
         const isOverdue = dayjs(date).isBefore(dayjs(), 'day') && record.deliveryStatus !== '04';
         return <span style={{ color: isOverdue ? '#ff4d4f' : 'inherit' }}>{date}</span>;
       },
@@ -303,7 +177,7 @@ export default function DeliveriesPage() {
       key: 'totalWeight',
       width: 100,
       align: 'right' as const,
-      render: (v: number, record: typeof mockDeliveries[0]) => `${v.toFixed(1)} ${record.weightUnit}`,
+      render: (v: number, record: any) => `${v?.toFixed(1) || '0.0'} ${record.weightUnit}`,
     },
     {
       title: '拣配状态',
@@ -346,28 +220,46 @@ export default function DeliveriesPage() {
       key: 'action',
       width: 200,
       fixed: 'right' as const,
-      render: (_: unknown, record: typeof mockDeliveries[0]) => (
+      render: (_: unknown, record: any) => (
         <Space size="small">
           <Button type="link" size="small" onClick={() => { setSelectedDelivery(record); setDetailModalVisible(true); }}>
             详情
           </Button>
           {record.pickingStatus === 'A' && (
             <Tooltip title="确认拣配">
-              <Button type="link" size="small" icon={<InboxOutlined />} style={{ color: '#1890ff' }}>
+              <Button type="link" size="small" icon={<InboxOutlined />} style={{ color: '#1890ff' }} onClick={async () => {
+                try {
+                  await deliveryApi.pick(record.id, []);
+                  message.success('拣配成功');
+                  fetchDeliveries();
+                } catch (error) { message.error('拣配失败'); }
+              }}>
                 拣配
               </Button>
             </Tooltip>
           )}
           {record.pickingStatus === 'C' && record.giStatus === 'A' && (
             <Tooltip title="发货过账">
-              <Button type="link" size="small" icon={<SendOutlined />} style={{ color: '#52c41a' }}>
+              <Button type="link" size="small" icon={<SendOutlined />} style={{ color: '#52c41a' }} onClick={async () => {
+                try {
+                  await deliveryApi.postGoodsIssue(record.id, dayjs().format('YYYY-MM-DD'));
+                  message.success('发货过账成功');
+                  fetchDeliveries();
+                } catch (error) { message.error('发货过账失败'); }
+              }}>
                 过账
               </Button>
             </Tooltip>
           )}
           {record.deliveryStatus !== '04' && (
             <Tooltip title="取消交货">
-              <Button type="link" size="small" danger icon={<CloseCircleOutlined />}>
+              <Button type="link" size="small" danger icon={<CloseCircleOutlined />} onClick={async () => {
+                try {
+                  await deliveryApi.cancel(record.id);
+                  message.success('交货单已取消');
+                  fetchDeliveries();
+                } catch (error) { message.error('取消交货单失败'); }
+              }}>
                 取消
               </Button>
             </Tooltip>
@@ -383,7 +275,7 @@ export default function DeliveriesPage() {
         title="交货管理 (对标 SAP VL01N/VL02N)"
         extra={
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => setLoading(!loading)}>刷新</Button>
+            <Button icon={<ReloadOutlined />} onClick={fetchDeliveries}>刷新</Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)}>
               新建交货单
             </Button>
@@ -466,7 +358,15 @@ export default function DeliveriesPage() {
         title="新建交货单"
         open={createModalVisible}
         onCancel={() => setCreateModalVisible(false)}
-        onOk={() => { message.success('交货单创建成功'); setCreateModalVisible(false); }}
+        onOk={async () => {
+          try {
+            message.success('交货单创建成功');
+            setCreateModalVisible(false);
+            fetchDeliveries();
+          } catch (error) {
+            message.error('创建交货单失败');
+          }
+        }}
         width={900}
       >
         <Form layout="vertical">
@@ -479,7 +379,7 @@ export default function DeliveriesPage() {
             <Col span={8}>
               <Form.Item label="来源订单">
                 <Select placeholder="选择销售订单（可选）" showSearch optionFilterProp="label"
-                  options={mockSalesOrders.map(o => ({ value: o.orderNo, label: `${o.orderNo} - ${o.customerName}` }))} />
+                  options={[]} />
               </Form.Item>
             </Col>
             <Col span={8}>
@@ -611,15 +511,15 @@ export default function DeliveriesPage() {
                   { title: '物料编码', dataIndex: 'materialCode', width: 110 },
                   { title: '物料描述', dataIndex: 'materialName', width: 150 },
                   { title: '订单数量', dataIndex: 'orderQty', width: 100, align: 'right' as const,
-                    render: (v: number, r: typeof selectedDelivery.items[0]) => `${v} ${r.unit}`,
+                    render: (v: number, r: any) => `${v} ${r.unit}`,
                   },
                   { title: '已交数量', dataIndex: 'deliveredQty', width: 100, align: 'right' as const,
-                    render: (v: number, r: typeof selectedDelivery.items[0]) => `${v} ${r.unit}`,
+                    render: (v: number, r: any) => `${v} ${r.unit}`,
                   },
                   { title: '批次', dataIndex: 'batch', width: 120, render: (v: string) => v || '-' },
                   {
                     title: '状态', width: 80,
-                    render: (_: unknown, r: typeof selectedDelivery.items[0]) => {
+                    render: (_: unknown, r: any) => {
                       if (r.deliveredQty === 0) return <Tag color="default">未拣配</Tag>;
                       if (r.deliveredQty < r.orderQty) return <Tag color="processing">部分拣配</Tag>;
                       return <Tag color="green">完全拣配</Tag>;

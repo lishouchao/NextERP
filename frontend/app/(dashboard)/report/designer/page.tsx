@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { apiClient } from '@/lib/api/client';
+import api from '@/lib/api/client';
 
 interface ReportConfig {
   reportCode: string;
@@ -39,7 +39,7 @@ export default function ReportDesignerPage() {
     setSaving(true);
     try {
       const tenantId = localStorage.getItem('tenantId') || '1';
-      await apiClient.post('/report/v1/management', {
+      await api.post('/report/v1/management', {
         ...config,
         tenantId: Number(tenantId)
       });
@@ -95,7 +95,7 @@ export default function ReportDesignerPage() {
 
     try {
       const tenantId = localStorage.getItem('tenantId') || '1';
-      const response = await apiClient.post(`/report/v1/management/test`, {
+      const response = await api.post(`/report/v1/management/test`, {
         sql: config.datasourceConfig.sql,
         tenantId: Number(tenantId)
       });
@@ -239,7 +239,7 @@ export default function ReportDesignerPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm"
               />
               <p className="text-xs text-gray-500 mt-1">
-                使用 ${param} 作为参数占位符
+                {"使用 ${param} 作为参数占位符"}
               </p>
             </div>
             <button
@@ -288,7 +288,7 @@ export default function ReportDesignerPage() {
               </div>
             ))}
             {(!config.reportConfig.columns || config.reportConfig.columns.length === 0) && (
-              <p className="text-gray-500 text-sm">点击"添加列"配置报表列</p>
+              <p className="text-gray-500 text-sm">点击&ldquo;添加列&rdquo;配置报表列</p>
             )}
           </div>
         </div>

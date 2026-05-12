@@ -1,14 +1,18 @@
 package com.nexterp.business.sales.controller;
 
+import com.nexterp.business.sales.application.service.SdDeliveryService;
+import com.nexterp.business.sales.dto.CreateDeliveryRequest;
+import com.nexterp.business.sales.dto.DeliveryDTO;
 import com.nexterp.shared.core.result.PageResult;
 import com.nexterp.shared.core.result.Result;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +27,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SdDeliveryController {
 
+    private final SdDeliveryService deliveryService;
+
     /**
      * 分页查询交货单
      *
@@ -34,20 +40,13 @@ public class SdDeliveryController {
      */
     @GetMapping
     @PreAuthorize("hasAuthority('sd:delivery:view')")
-    public Result<PageResult<Map<String, Object>>> listDeliveries(
+    public Result<PageResult<DeliveryDTO>> listDeliveries(
             @RequestParam Long tenantId,
             @RequestParam(required = false) String deliveryStatus,
             @RequestParam(defaultValue = "1") int current,
             @RequestParam(defaultValue = "10") int size) {
         log.info("查询交货单列表, tenantId={}, deliveryStatus={}, current={}, size={}", tenantId, deliveryStatus, current, size);
-        // TODO: 调用交货服务
-        PageResult<Map<String, Object>> pageResult = PageResult.<Map<String, Object>>builder()
-                .records(Collections.emptyList())
-                .total(0L)
-                .current(current)
-                .size(size)
-                .build();
-        return Result.success(pageResult);
+        return Result.success(deliveryService.listDeliveries(tenantId, deliveryStatus, current, size));
     }
 
     /**
@@ -58,10 +57,9 @@ public class SdDeliveryController {
      */
     @PostMapping
     @PreAuthorize("hasAuthority('sd:delivery:add')")
-    public Result<Long> createDelivery(@Valid @RequestBody Map<String, Object> request) {
+    public Result<Long> createDelivery(@Valid @RequestBody CreateDeliveryRequest request) {
         log.info("创建交货单");
-        // TODO: 调用交货服务
-        return Result.success(1L);
+        return Result.success(deliveryService.createDelivery(request));
     }
 
     /**
@@ -72,10 +70,9 @@ public class SdDeliveryController {
      */
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('sd:delivery:view')")
-    public Result<Map<String, Object>> getDeliveryById(@PathVariable Long id) {
+    public Result<DeliveryDTO> getDeliveryById(@PathVariable Long id) {
         log.info("获取交货单详情, id={}", id);
-        // TODO: 调用交货服务
-        return Result.success(Map.of("id", id));
+        return Result.success(deliveryService.getDeliveryById(id));
     }
 
     /**
@@ -87,12 +84,12 @@ public class SdDeliveryController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('sd:delivery:edit')")
-    public Result<Map<String, Object>> updateDelivery(
+    public Result<Void> updateDelivery(
             @PathVariable Long id,
-            @Valid @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody CreateDeliveryRequest request) {
         log.info("更新交货单, id={}", id);
-        // TODO: 调用交货服务
-        return Result.success(Map.of("id", id));
+        deliveryService.updateDelivery(id, request);
+        return Result.success();
     }
 
     /**
@@ -108,14 +105,14 @@ public class SdDeliveryController {
             @PathVariable Long id,
             @RequestBody List<Map<String, Object>> pickItems) {
         log.info("交货单拣货, id={}, 拣货明细数={}", id, pickItems.size());
-        // TODO: 调用交货服务
+        deliveryService.pickDelivery(id, pickItems);
         return Result.success();
     }
 
     /**
      * 交货单发货过账
      *
-     * @param id          交货单ID
+     * @param id           交货单ID
      * @param actualGiDate 实际发货日期
      * @return 成功
      */
@@ -123,9 +120,9 @@ public class SdDeliveryController {
     @PreAuthorize("hasAuthority('sd:delivery:edit')")
     public Result<Void> postGoodsIssue(
             @PathVariable Long id,
-            @RequestParam String actualGiDate) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate actualGiDate) {
         log.info("交货单发货过账, id={}, actualGiDate={}", id, actualGiDate);
-        // TODO: 调用交货服务
+        deliveryService.postGoodsIssue(id, actualGiDate);
         return Result.success();
     }
 
@@ -139,7 +136,7 @@ public class SdDeliveryController {
     @PreAuthorize("hasAuthority('sd:delivery:edit')")
     public Result<Void> cancelDelivery(@PathVariable Long id) {
         log.info("取消交货单, id={}", id);
-        // TODO: 调用交货服务
+        deliveryService.cancelDelivery(id);
         return Result.success();
     }
 }

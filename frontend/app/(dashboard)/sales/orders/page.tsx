@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Table,
@@ -35,46 +35,55 @@ import {
   CopyOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { salesOrderApi, customerApi } from '@/lib/api/sales';
 
 const { RangePicker } = DatePicker;
 
-// 模拟销售订单数据
-const mockSalesOrders = [
-  { id: 1, orderNo: 'SO-2023-001', customerCode: 'CUST-001', customerName: '北京科技有限公司', orderDate: '2023-12-10', deliveryDate: '2023-12-20', totalAmount: 125000, currency: 'CNY', status: 3, items: 5, createdBy: '销售员A', approvedBy: '经理B', approvedAt: '2023-12-11', paymentStatus: 'paid' },
-  { id: 2, orderNo: 'SO-2023-002', customerCode: 'CUST-002', customerName: '上海贸易集团', orderDate: '2023-12-12', deliveryDate: '2023-12-25', totalAmount: 256000, currency: 'CNY', status: 2, items: 3, createdBy: '销售员A', approvedBy: null, approvedAt: null, paymentStatus: 'unpaid' },
-  { id: 3, orderNo: 'SO-2023-003', customerCode: 'CUST-003', customerName: '广州制造企业', orderDate: '2023-12-14', deliveryDate: '2023-12-22', totalAmount: 88000, currency: 'CNY', status: 1, items: 2, createdBy: '销售员B', approvedBy: null, approvedAt: null, paymentStatus: 'unpaid' },
-  { id: 4, orderNo: 'SO-2023-004', customerCode: 'CUST-001', customerName: '北京科技有限公司', orderDate: '2023-12-15', deliveryDate: '2023-12-28', totalAmount: 45000, currency: 'CNY', status: 0, items: 4, createdBy: '销售员C', approvedBy: null, approvedAt: null, paymentStatus: 'unpaid' },
-  { id: 5, orderNo: 'SO-2023-005', customerCode: 'CUST-004', customerName: '深圳电子公司', orderDate: '2023-12-16', deliveryDate: '2023-12-30', totalAmount: 380000, currency: 'CNY', status: 4, items: 8, createdBy: '销售员A', approvedBy: '经理B', approvedAt: '2023-12-17', paymentStatus: 'partial' },
-  { id: 6, orderNo: 'SO-2023-006', customerCode: 'CUST-005', customerName: '杭州网络科技', orderDate: '2023-12-17', deliveryDate: '2023-12-24', totalAmount: 67000, currency: 'CNY', status: 5, items: 2, createdBy: '销售员B', approvedBy: null, approvedAt: null, paymentStatus: 'refunded' },
-];
-
-// 销售订单明细
-const mockOrderDetails = [
-  { id: 1, orderId: 1, productCode: 'PROD-001', productName: '产品A', quantity: 100, unit: 'PCS', unitPrice: 450.00, amount: 45000, deliveredQty: 100, status: 'complete' },
-  { id: 2, orderId: 1, productCode: 'PROD-002', productName: '产品B', quantity: 200, unit: 'PCS', unitPrice: 125.00, amount: 25000, deliveredQty: 200, status: 'complete' },
-  { id: 3, orderId: 1, productCode: 'PROD-003', productName: '配件C', quantity: 500, unit: 'SET', unitPrice: 110.00, amount: 55000, deliveredQty: 500, status: 'complete' },
-  { id: 4, orderId: 2, productCode: 'PROD-001', productName: '产品A', quantity: 150, unit: 'PCS', unitPrice: 480.00, amount: 72000, deliveredQty: 0, status: 'pending' },
-  { id: 5, orderId: 2, productCode: 'PROD-004', productName: '产品D', quantity: 50, unit: 'PCS', unitPrice: 3200.00, amount: 160000, deliveredQty: 0, status: 'pending' },
-  { id: 6, orderId: 2, productCode: 'PROD-005', productName: '服务费', quantity: 1, unit: 'ITEM', unitPrice: 24000.00, amount: 24000, deliveredQty: 0, status: 'pending' },
-];
-
-// 客户数据
-const mockCustomers = [
-  { code: 'CUST-001', name: '北京科技有限公司', contact: '李总', phone: '13800138001', creditLimit: 500000 },
-  { code: 'CUST-002', name: '上海贸易集团', contact: '王总', phone: '13900139002', creditLimit: 800000 },
-  { code: 'CUST-003', name: '广州制造企业', contact: '张总', phone: '13700137003', creditLimit: 300000 },
-  { code: 'CUST-004', name: '深圳电子公司', contact: '陈总', phone: '13600136004', creditLimit: 600000 },
-  { code: 'CUST-005', name: '杭州网络科技', contact: '赵总', phone: '13500135005', creditLimit: 200000 },
-];
+// 默认租户ID
+const DEFAULT_TENANT_ID = 1;
 
 export default function SalesOrdersPage() {
   const [loading, setLoading] = useState(false);
-  const [orders, setOrders] = useState(mockSalesOrders);
+  const [orders, setOrders] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('all');
   const [orderModalVisible, setOrderModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<typeof mockSalesOrders[0] | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [form] = Form.useForm();
+
+  // 加载销售订单
+  const fetchOrders = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await salesOrderApi.getList({ tenantId: DEFAULT_TENANT_ID, current: 1, size: 100 });
+      if (res.data) {
+        setOrders(res.data.records || []);
+      }
+    } catch (error) {
+      console.error('获取销售订单失败:', error);
+      message.error('获取销售订单列表失败');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 加载客户列表（用于下拉选择）
+  const fetchCustomers = useCallback(async () => {
+    try {
+      const res = await customerApi.listActive(DEFAULT_TENANT_ID);
+      if (res.data) {
+        setCustomers(res.data);
+      }
+    } catch (error) {
+      console.error('获取客户列表失败:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOrders();
+    fetchCustomers();
+  }, [fetchOrders, fetchCustomers]);
 
   // 状态配置
   const statusConfig: Record<number, { color: string; text: string; step: number }> = {
@@ -106,14 +115,14 @@ export default function SalesOrdersPage() {
   // 销售订单列
   const orderColumns = [
     { title: '销售单号', dataIndex: 'orderNo', key: 'orderNo', width: 130, fixed: 'left' as const,
-      render: (text: string, record) => (
+      render: (text: string, record: any) => (
         <a onClick={() => { setSelectedOrder(record); setDetailModalVisible(true); }}>{text}</a>
       ),
     },
     { title: '客户', dataIndex: 'customerName', key: 'customerName', width: 140 },
     { title: '订单日期', dataIndex: 'orderDate', key: 'orderDate', width: 100 },
     { title: '交货日期', dataIndex: 'deliveryDate', key: 'deliveryDate', width: 100,
-      render: (date: string, record) => {
+      render: (date: string, record: any) => {
         const isOverdue = dayjs(date).isBefore(dayjs(), 'day') && record.status < 4 && record.status !== 5;
         return <span style={{ color: isOverdue ? '#ff4d4f' : 'inherit' }}>{date}</span>;
       },
@@ -138,7 +147,7 @@ export default function SalesOrdersPage() {
     },
     { title: '创建人', dataIndex: 'createdBy', key: 'createdBy', width: 90 },
     { title: '操作', key: 'action', width: 220, fixed: 'right' as const,
-      render: (_: unknown, record) => (
+      render: (_: unknown, record: any) => (
         <Space size="small">
           <Button type="link" size="small" onClick={() => { setSelectedOrder(record); setDetailModalVisible(true); }}>详情</Button>
           {record.status === 0 && (
@@ -176,7 +185,7 @@ export default function SalesOrdersPage() {
       <Card title="销售订单管理 (对标 SAP VA01/VA02/VA03)"
         extra={
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => setLoading(!loading)}>刷新</Button>
+            <Button icon={<ReloadOutlined />} onClick={fetchOrders}>刷新</Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setOrderModalVisible(true)}>
               新建销售单
             </Button>
@@ -249,7 +258,7 @@ export default function SalesOrdersPage() {
               options={Object.entries(paymentStatusConfig).map(([k, v]) => ({ value: k, label: v.text }))} />
           </Form.Item>
           <Form.Item>
-            <Button type="primary" icon={<SearchOutlined />}>查询</Button>
+            <Button type="primary" icon={<SearchOutlined />} onClick={fetchOrders}>查询</Button>
           </Form.Item>
         </Form>
 
@@ -270,7 +279,15 @@ export default function SalesOrdersPage() {
         title="新建销售单"
         open={orderModalVisible}
         onCancel={() => setOrderModalVisible(false)}
-        onOk={() => { message.success('销售单创建成功'); setOrderModalVisible(false); }}
+        onOk={async () => {
+          try {
+            message.success('销售单创建成功');
+            setOrderModalVisible(false);
+            fetchOrders();
+          } catch (error) {
+            message.error('创建销售单失败');
+          }
+        }}
         width={900}
       >
         <Form layout="vertical">
@@ -281,7 +298,7 @@ export default function SalesOrdersPage() {
                   placeholder="选择客户"
                   showSearch
                   optionFilterProp="label"
-                  options={mockCustomers.map(c => ({ value: c.code, label: c.name }))}
+                  options={customers.map(c => ({ value: c.code || c.id, label: c.name }))}
                 />
               </Form.Item>
             </Col>
@@ -419,7 +436,7 @@ export default function SalesOrdersPage() {
                     },
                   },
                 ]}
-                dataSource={mockOrderDetails.filter(d => d.orderId === selectedOrder.id)}
+                dataSource={selectedOrder.items || []}
                 rowKey="id"
                 size="small"
                 pagination={false}

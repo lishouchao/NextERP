@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Card,
   Table,
@@ -35,25 +35,13 @@ import {
   ShoppingCartOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { purchaseReqApi, purchaseOrderApi } from '@/lib/api/supply';
+import type { PurchaseReqDTO, PurchaseOrderDTO } from '@/lib/api/supply';
 
 const { RangePicker } = DatePicker;
 
-// 模拟采购订单数据
-const mockPurchaseOrders = [
-  { id: 1, orderNo: 'PO-2023-001', supplierCode: 'SUP-001', supplierName: '原材料供应商A', orderDate: '2023-12-10', deliveryDate: '2023-12-20', totalAmount: 85000, currency: 'CNY', status: 3, items: 3, createdBy: '张三', approvedBy: '李四', approvedAt: '2023-12-11' },
-  { id: 2, orderNo: 'PO-2023-002', supplierCode: 'SUP-002', supplierName: '设备供应商B', orderDate: '2023-12-12', deliveryDate: '2023-12-25', totalAmount: 156000, currency: 'CNY', status: 2, items: 2, createdBy: '张三', approvedBy: null, approvedAt: null },
-  { id: 3, orderNo: 'PO-2023-003', supplierCode: 'SUP-003', supplierName: '包装材料公司', orderDate: '2023-12-14', deliveryDate: '2023-12-22', totalAmount: 28000, currency: 'CNY', status: 1, items: 5, createdBy: '李四', approvedBy: null, approvedAt: null },
-  { id: 4, orderNo: 'PO-2023-004', supplierCode: 'SUP-001', supplierName: '原材料供应商A', orderDate: '2023-12-15', deliveryDate: '2023-12-28', totalAmount: 45000, currency: 'CNY', status: 0, items: 2, createdBy: '王五', approvedBy: null, approvedAt: null },
-];
-
-// 采购订单明细
-const mockOrderDetails = [
-  { id: 1, orderId: 1, materialCode: 'MAT-001', materialName: '原材料A', quantity: 1000, unit: 'KG', unitPrice: 25.50, amount: 25500, receivedQty: 1000, status: 'complete' },
-  { id: 2, orderId: 1, materialCode: 'MAT-002', materialName: '原材料B', quantity: 500, unit: 'KG', unitPrice: 32.00, amount: 16000, receivedQty: 500, status: 'complete' },
-  { id: 3, orderId: 1, materialCode: 'MAT-003', materialName: '包装材料', quantity: 2000, unit: 'PCS', unitPrice: 21.75, amount: 43500, receivedQty: 1500, status: 'partial' },
-  { id: 4, orderId: 2, materialCode: 'MAT-006', materialName: '辅助材料E', quantity: 100, unit: 'L', unitPrice: 60.00, amount: 6000, receivedQty: 0, status: 'pending' },
-  { id: 5, orderId: 2, materialCode: 'MAT-007', materialName: '备件F', quantity: 10, unit: 'SET', unitPrice: 15000.00, amount: 150000, receivedQty: 0, status: 'pending' },
-];
+// Default tenant ID
+const DEFAULT_TENANT_ID = 1;
 
 // 供应商数据
 const mockSuppliers = [
@@ -64,11 +52,14 @@ const mockSuppliers = [
 
 export default function PurchasePage() {
   const [loading, setLoading] = useState(false);
-  const [orders, setOrders] = useState(mockPurchaseOrders);
+  const [orders, setOrders] = useState<PurchaseOrderDTO[]>([]);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [activeTab, setActiveTab] = useState('orders');
   const [orderModalVisible, setOrderModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<typeof mockPurchaseOrders[0] | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<PurchaseOrderDTO | null>(null);
   const [form] = Form.useForm();
 
   // 状态配置
@@ -81,45 +72,70 @@ export default function PurchasePage() {
     5: { color: 'red', text: '已取消', step: -1 },
   };
 
+  const fetchOrders = useCallback(async (page = currentPage, size = pageSize) => {
+    try {
+      setLoading(true);
+      const res = await purchaseOrderApi.getPage({
+        tenantId: DEFAULT_TENANT_ID,
+        current: page,
+        size,
+      });
+      if (res.success && res.data) {
+        setOrders(res.data.records);
+        setTotalOrders(res.data.total);
+      }
+    } catch (error) {
+      console.error('Failed to fetch purchase orders:', error);
+      message.error('获取采购订单失败');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pageSize]);
+
+  useEffect(() => {
+    if (activeTab === 'orders') {
+      fetchOrders();
+    }
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // 采购订单列
   const orderColumns = [
-    { title: '采购单号', dataIndex: 'orderNo', key: 'orderNo', width: 130, fixed: 'left' as const,
-      render: (text: string, record) => (
+    { title: '采购单号', dataIndex: 'poNumber', key: 'poNumber', width: 130, fixed: 'left' as const,
+      render: (text: string, record: any) => (
         <a onClick={() => { setSelectedOrder(record); setDetailModalVisible(true); }}>{text}</a>
       ),
     },
-    { title: '供应商', dataIndex: 'supplierName', key: 'supplierName', width: 140 },
-    { title: '订单日期', dataIndex: 'orderDate', key: 'orderDate', width: 100 },
-    { title: '交货日期', dataIndex: 'deliveryDate', key: 'deliveryDate', width: 100,
-      render: (date: string, record) => {
-        const isOverdue = dayjs(date).isBefore(dayjs(), 'day') && record.status < 3;
+    { title: '供应商', dataIndex: 'vendorName', key: 'vendorName', width: 140 },
+    { title: '订单日期', dataIndex: 'documentDate', key: 'documentDate', width: 100 },
+    { title: '交货日期', dataIndex: 'validTo', key: 'validTo', width: 100,
+      render: (date: string, record: any) => {
+        const isOverdue = dayjs(date).isBefore(dayjs(), 'day') && record.status < '3';
         return <span style={{ color: isOverdue ? '#ff4d4f' : 'inherit' }}>{date}</span>;
       },
     },
-    { title: '订单金额', dataIndex: 'totalAmount', key: 'totalAmount', width: 120, align: 'right' as const,
+    { title: '订单金额', dataIndex: 'totalNetValue', key: 'totalNetValue', width: 120, align: 'right' as const,
       render: (v: number) => <span style={{ color: '#1890ff', fontWeight: 'bold' }}>¥{v.toLocaleString()}</span>,
     },
     { title: '物料数', dataIndex: 'items', key: 'items', width: 80, align: 'center' as const,
-      render: (v: number) => <Badge count={v} showZero style={{ backgroundColor: '#52c41a' }} />,
+      render: (v: any[]) => <Badge count={v?.length || 0} showZero style={{ backgroundColor: '#52c41a' }} />,
     },
     { title: '状态', dataIndex: 'status', key: 'status', width: 90,
-      render: (status: number) => {
-        const config = statusConfig[status];
+      render: (status: string) => {
+        const config = statusConfig[Number(status)];
         return <Tag color={config?.color}>{config?.text}</Tag>;
       },
     },
-    { title: '创建人', dataIndex: 'createdBy', key: 'createdBy', width: 80 },
     { title: '操作', key: 'action', width: 200, fixed: 'right' as const,
-      render: (_: unknown, record) => (
+      render: (_: unknown, record: any) => (
         <Space size="small">
           <Button type="link" size="small" onClick={() => { setSelectedOrder(record); setDetailModalVisible(true); }}>详情</Button>
-          {record.status === 0 && (
+          {record.status === '0' && (
             <>
               <Button type="link" size="small" icon={<EditOutlined />}>编辑</Button>
               <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
             </>
           )}
-          {record.status === 1 && (
+          {record.status === '1' && (
             <Button type="link" size="small" icon={<CheckOutlined />} style={{ color: '#52c41a' }}>审批</Button>
           )}
         </Space>
@@ -156,9 +172,9 @@ export default function PurchasePage() {
   // 统计
   const stats = {
     totalOrders: orders.length,
-    pendingApproval: orders.filter(o => o.status === 1).length,
-    totalAmount: orders.reduce((s, o) => s + o.totalAmount, 0),
-    completedOrders: orders.filter(o => o.status >= 3).length,
+    pendingApproval: orders.filter(o => o.status === '1').length,
+    totalAmount: orders.reduce((s, o) => s + o.totalNetValue, 0),
+    completedOrders: orders.filter(o => Number(o.status) >= 3).length,
   };
 
   return (
@@ -166,7 +182,7 @@ export default function PurchasePage() {
       <Card title="采购管理 (对标 SAP ME21N)"
         extra={
           <Space>
-            <Button icon={<ReloadOutlined />} onClick={() => setLoading(!loading)}>刷新</Button>
+            <Button icon={<ReloadOutlined />} onClick={() => fetchOrders()}>刷新</Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setOrderModalVisible(true)}>
               新建采购单
             </Button>
@@ -236,7 +252,17 @@ export default function PurchasePage() {
               loading={loading}
               size="small"
               scroll={{ x: 1200 }}
-              pagination={{ defaultPageSize: 20, showSizeChanger: true }}
+              pagination={{
+                current: currentPage,
+                pageSize,
+                total: totalOrders,
+                showSizeChanger: true,
+                onChange: (page, size) => {
+                  setCurrentPage(page);
+                  setPageSize(size);
+                  fetchOrders(page, size);
+                },
+              }}
             />
           </>
         )}
@@ -298,7 +324,7 @@ export default function PurchasePage() {
         title="新建采购单"
         open={orderModalVisible}
         onCancel={() => setOrderModalVisible(false)}
-        onOk={() => { message.success('采购单创建成功'); setOrderModalVisible(false); }}
+        onOk={() => { message.success('采购单创建成功'); setOrderModalVisible(false); fetchOrders(); }}
         width={800}
       >
         <Form layout="vertical">
@@ -346,7 +372,7 @@ export default function PurchasePage() {
 
       {/* 订单详情弹窗 */}
       <Modal
-        title={`采购单详情 - ${selectedOrder?.orderNo}`}
+        title={`采购单详情 - ${selectedOrder?.poNumber}`}
         open={detailModalVisible}
         onCancel={() => { setDetailModalVisible(false); setSelectedOrder(null); }}
         footer={[
@@ -359,24 +385,24 @@ export default function PurchasePage() {
             <Card size="small" style={{ marginBottom: 16 }}>
               <Steps
                 size="small"
-                current={statusConfig[selectedOrder.status]?.step || 0}
+                current={statusConfig[Number(selectedOrder.status)]?.step || 0}
                 items={[
                   { title: '创建', status: 'finish' },
-                  { title: '审批', status: selectedOrder.status >= 2 ? 'finish' : 'wait' },
-                  { title: '收货', status: selectedOrder.status >= 3 ? 'finish' : 'wait' },
-                  { title: '完成', status: selectedOrder.status >= 4 ? 'finish' : 'wait' },
+                  { title: '审批', status: Number(selectedOrder.status) >= 2 ? 'finish' : 'wait' },
+                  { title: '收货', status: Number(selectedOrder.status) >= 3 ? 'finish' : 'wait' },
+                  { title: '完成', status: Number(selectedOrder.status) >= 4 ? 'finish' : 'wait' },
                 ]}
               />
             </Card>
 
             <Descriptions bordered size="small" column={3} style={{ marginBottom: 16 }}>
-              <Descriptions.Item label="采购单号">{selectedOrder.orderNo}</Descriptions.Item>
-              <Descriptions.Item label="供应商">{selectedOrder.supplierName}</Descriptions.Item>
-              <Descriptions.Item label="状态"><Tag color={statusConfig[selectedOrder.status]?.color}>{statusConfig[selectedOrder.status]?.text}</Tag></Descriptions.Item>
-              <Descriptions.Item label="订单日期">{selectedOrder.orderDate}</Descriptions.Item>
-              <Descriptions.Item label="交货日期">{selectedOrder.deliveryDate}</Descriptions.Item>
-              <Descriptions.Item label="订单金额"><span style={{ color: '#1890ff', fontWeight: 'bold' }}>¥{selectedOrder.totalAmount.toLocaleString()}</span></Descriptions.Item>
-              <Descriptions.Item label="创建人">{selectedOrder.createdBy}</Descriptions.Item>
+              <Descriptions.Item label="采购单号">{selectedOrder.poNumber}</Descriptions.Item>
+              <Descriptions.Item label="供应商">{selectedOrder.vendorName}</Descriptions.Item>
+              <Descriptions.Item label="状态"><Tag color={statusConfig[Number(selectedOrder.status)]?.color}>{statusConfig[Number(selectedOrder.status)]?.text}</Tag></Descriptions.Item>
+              <Descriptions.Item label="订单日期">{selectedOrder.documentDate}</Descriptions.Item>
+              <Descriptions.Item label="交货日期">{selectedOrder.validTo}</Descriptions.Item>
+              <Descriptions.Item label="订单金额"><span style={{ color: '#1890ff', fontWeight: 'bold' }}>¥{selectedOrder.totalNetValue.toLocaleString()}</span></Descriptions.Item>
+              <Descriptions.Item label="创建人">{selectedOrder.createdBy || '-'}</Descriptions.Item>
               <Descriptions.Item label="审批人">{selectedOrder.approvedBy || '-'}</Descriptions.Item>
               <Descriptions.Item label="审批时间">{selectedOrder.approvedAt || '-'}</Descriptions.Item>
             </Descriptions>
@@ -385,11 +411,11 @@ export default function PurchasePage() {
               <Table
                 columns={[
                   { title: '物料编码', dataIndex: 'materialCode', width: 100 },
-                  { title: '物料名称', dataIndex: 'materialName', width: 120 },
+                  { title: '物料名称', dataIndex: 'shortText', width: 120 },
                   { title: '订单数量', dataIndex: 'quantity', width: 100, render: (v, r: any) => `${v} ${r.unit}` },
-                  { title: '单价', dataIndex: 'unitPrice', width: 100, align: 'right' as const, render: (v) => `¥${v.toFixed(2)}` },
-                  { title: '金额', dataIndex: 'amount', width: 100, align: 'right' as const, render: (v) => `¥${v.toLocaleString()}` },
-                  { title: '已收货', dataIndex: 'receivedQty', width: 100, render: (v, r: any) => `${v} ${r.unit}` },
+                  { title: '单价', dataIndex: 'price', width: 100, align: 'right' as const, render: (v) => `¥${v.toFixed(2)}` },
+                  { title: '金额', dataIndex: 'netValue', width: 100, align: 'right' as const, render: (v) => `¥${v.toLocaleString()}` },
+                  { title: '已收货', dataIndex: 'quantityDelivered', width: 100, render: (v, r: any) => `${v} ${r.unit}` },
                   {
                     title: '状态', dataIndex: 'status', width: 80,
                     render: (status: string) => {
@@ -403,8 +429,8 @@ export default function PurchasePage() {
                     },
                   },
                 ]}
-                dataSource={mockOrderDetails.filter(d => d.orderId === selectedOrder.id)}
-                rowKey="id"
+                dataSource={selectedOrder.items || []}
+                rowKey="poItem"
                 size="small"
                 pagination={false}
               />
